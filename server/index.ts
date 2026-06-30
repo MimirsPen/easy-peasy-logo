@@ -31,13 +31,13 @@ app.use((req, res, next) => {
   let capturedJsonResponse: Record<string, any> | undefined = undefined;
 
   const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
+  res.json = function (bodyJson, ...args: any[]) {
     capturedJsonResponse = bodyJson;
     return originalResJson.apply(res, [bodyJson, ...args]);
   };
 
   const originalEnd = res.end;
-  res.end = function (...args: any[]) {
+  res.end = function (chunk?: any, encoding?: any, cb?: any) {
     const duration = Date.now() - start;
     console.log("RES", req.method, req.url, res.statusCode, res.getHeader("content-type") || "");
     
@@ -48,7 +48,7 @@ app.use((req, res, next) => {
       }
       log(logLine);
     }
-    return originalEnd.apply(res, args);
+    return originalEnd.call(res, chunk, encoding, cb);
   };
 
   next();
@@ -131,3 +131,5 @@ setInterval(() => {
   console.error("[crash] Server startup failed:", err);
   process.exit(1);
 });
+
+export { app };
