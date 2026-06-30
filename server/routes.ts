@@ -206,7 +206,6 @@ export async function registerRoutes(
           .then(({ error }) => {
             if (error) console.error("[generate-logo] generation_status update error:", error.message);
           })
-          .catch(console.error);
       }
 
       // Collect the raw stream — express.json() does not consume multipart bodies
@@ -335,7 +334,6 @@ export async function registerRoutes(
           .then(({ error }) => {
             if (error) console.error("[callback] generation_status clear error:", error.message);
           })
-          .catch(console.error);
       }
     }
   });
