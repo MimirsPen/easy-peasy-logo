@@ -4,20 +4,17 @@
     {
       "src": "api/index.ts",
       "use": "@vercel/node"
+    },
+    {
+      "src": "client/**/*",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist/public"
+      }
     }
   ],
   "routes": [
-    { 
-      "src": "/api/(.*)", 
-      "dest": "api/index.ts" 
-    },
-    { 
-      "src": "/assets/(.*)", 
-      "dest": "dist/public/assets/$1" 
-    },
-    { 
-      "src": "/(.*)",
-      "dest": "dist/public/index.html" 
-    }
+    { "src": "/api/(.*)", "dest": "api/index.ts" },
+    { "src": "/(.*)", "dest": "dist/public/index.html" }
   ]
 }
