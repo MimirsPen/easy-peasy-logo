@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/index.ts",
+      "src": "dist/index.cjs",
       "use": "@vercel/node"
     },
     {
@@ -14,8 +14,17 @@
     }
   ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "api/index.ts" },
-    { "src": "/assets/(.*)", "dest": "dist/public/assets/$1" },
-    { "src": "/(.*)", "dest": "dist/public/index.html" }
+    {
+      "src": "/api/(.*)",
+      "dest": "dist/index.cjs"
+    },
+    {
+      "src": "/assets/(.*)",
+      "dest": "dist/public/assets/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "dist/public/index.html"
+    }
   ]
 }
