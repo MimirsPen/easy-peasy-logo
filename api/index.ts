@@ -1,6 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import { serveStatic } from "./static";
+import { serveStatic } from "../server/static";
 import { createServer } from "http";
 
 const app = express();
@@ -107,7 +107,7 @@ setInterval(() => {
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
-    const { setupVite } = await import("./vite");
+    const { setupVite } = await import("../server/vite");
     await setupVite(httpServer, app);
   }
 
