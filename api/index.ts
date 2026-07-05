@@ -81,40 +81,30 @@ setInterval(() => {
   console.log("MEM", JSON.stringify(process.memoryUsage()));
 }, 5000);
 
-// Register routes, setup static (prod) or Vite (dev)
-// No listen() call – Vercel handles the server.
-(async () => {
-  // 2. Register routes
-  // IMPORTANT: The webhook route must be registered BEFORE the global express.json()
-  // middleware so it can receive the raw body for signature verification.
-  // We handle this inside registerRoutes by ensuring it's the first route defined.
-  await registerRoutes(httpServer, app);
+// ✅ Register routes – now synchronous (no await needed)
+registerRoutes(httpServer, app);
 
-  app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+// Error handling middleware
+app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
+  const status = err.status || err.statusCode || 500;
+  const message = err.message || "Internal Server Error";
 
-    console.error("Internal Server Error:", err);
+  console.error("Internal Server Error:", err);
 
-    if (res.headersSent) {
-      return next(err);
-    }
-
-    return res.status(status).json({ message });
-  });
-
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (process.env.NODE_ENV === "production") {
-    serveStatic(app);
-  } else {
-    const { setupVite } = await import("../server/vite");
-    await setupVite(httpServer, app);
+  if (res.headersSent) {
+    return next(err);
   }
 
-  // No httpServer.listen() – for Vercel serverless, we just export the app.
-})();
+  return res.status(status).json({ message });
+});
 
-// Export the app as the default (ESM) – Vercel expects this.
+// Static files (production) or Vite (development)
+if (process.env.NODE_ENV === "production") {
+  serveStatic(app);
+} else {
+  const { setupVite } = await import("../server/vite");
+  await setupVite(httpServer, app);
+}
+
+// ✅ Export the app as default – Vercel will use this
 export default app;

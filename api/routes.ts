@@ -23,10 +23,10 @@ const supabaseAdmin = createClient(
 
 const processedEvents = new Set<string>();
 
-export async function registerRoutes(
+export function registerRoutes(
   httpServer: Server,
   app: Express
-): Promise<Server> {
+): Server {
   // --- WEBSOCKET SERVER ---
   const wss = new WebSocketServer({ noServer: true });
 
