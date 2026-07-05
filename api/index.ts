@@ -106,5 +106,6 @@ if (process.env.NODE_ENV === "production") {
   await setupVite(httpServer, app);
 }
 
-// ✅ Export the app as default – Vercel will use this
+// ✅ Export for Vercel (CommonJS) – this is what Vercel uses
 export default app;
+module.exports = app;

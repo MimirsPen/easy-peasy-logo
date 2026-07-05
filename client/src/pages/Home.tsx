@@ -13,21 +13,27 @@ import { motion, useAnimation, useMotionValue, useAnimationFrame, useTransform, 
 import { useInView } from "react-intersection-observer";
 import { ArrowRight } from "lucide-react";
 import logoIcon from "@assets/LOGO-removebg-preview_1771145708755.png";
-import bgImg1 from "@assets/20250905_1605_Retro-Futuristic_TV_Morph_simple_compose_01k4chy_1775127121791.png";
-import bgImg2 from "@assets/20250905_1638_Multiverse_Morphing_Banner_simple_compose_01k4ck_1775127121796.png";
-import bgImg3 from "@assets/20250909_1833_Natural_Disasters_Logo_simple_compose_01k4q3znb7_1775127121797.png";
-import bgImg4 from "@assets/a03aaf90-7bbb-4ae6-b696-6f9f808fa10b_0_1775127121798.png";
-import bgImg5 from "@assets/d5489611d75bbb1a205bae6bcecf87d2_1764743933_1775127121799.png";
-import bgImg6 from "@assets/ed8e86aea38fc7ac8ed0fac7acc23761_1_1762698047_9123_1775127121799.png";
-import bgImg7 from "@assets/instrumental_flowstate_logo_square_1775127121802.png";
-import bgImg8 from "@assets/LofiAxolotl_Logo_1775127121803.png";
-import bgImg9 from "@assets/LofiAxolotl_youtube_Banner_1775127121804.png";
-import bgImg10 from "@assets/Logo_CinematicMOGs_1775127121805.png";
-import bgImg11 from "@assets/Logo_Shoebill_Syndicate_1775127121805.png";
-import bgImg12 from "@assets/ShoebillSyndicate_Banner_1775127121806.png";
 
-const SUBTEXT = "Work with an AI identity designer that thinks through your brand with you, refining direction, taste, and meaning.";
+// ---- Dynamic image imports (all 22 images) ----
+// Rename your assets to 1.png … 22.png and place them in the assets folder
+const imageModules = import.meta.glob("@assets/*.webp", { eager: true, import: "default" });
+// Filter only numbered files: 1.png … 22.png
+const imagePaths = Object.keys(imageModules)
+  .filter((path) => {
+    const name = path.split("/").pop() || "";
+    return /^[0-9]+\.webp$/.test(name) && parseInt(name, 10) <= 22;
+  })
+  .sort((a, b) => {
+    const n1 = parseInt(a.split("/").pop() || "0", 10);
+    const n2 = parseInt(b.split("/").pop() || "0", 10);
+    return n1 - n2;
+  });
+const allImages = imagePaths.map((path) => imageModules[path]);
 
+// If you have exactly 22 images, this will load them. If not, add a fallback.
+// Ensure the filenames are exactly "1.png", "2.png", ... "22.png".
+
+// ---- Typewriter and WordReveal components (unchanged) ----
 function Typewriter({ 
   text, 
   className, 
@@ -187,47 +193,111 @@ export default function Home() {
   ];
 
   const [activeStep, setActiveStep] = useState(0);
-  const x = useMotionValue(-5000 / 2); // Initialise to middle of trackWidth
+  
+  // ---- Image belts (two strips) ----
+  const beltImages = allImages.length > 0 ? allImages : [];
+  // If you don't have 22 images yet, we'll fill with placeholders (but you should have them)
+  const imageCount = beltImages.length > 0 ? beltImages.length : 22; // fallback to 22
+
+  // Motion values for the two belts
+  const beltSpeed = 0.02; // pixels per frame
+  const beltWidth = 350; // approximate width per image + gap
+
+  // Top belt: moves right → left (negative direction)
+  const topX = useMotionValue(0);
+  // Bottom belt: moves left → right (positive direction)
+  const bottomX = useMotionValue(0);
+
+  useAnimationFrame((t, delta) => {
+    const step = delta * beltSpeed;
+    // Update top belt (negative direction)
+    topX.set(topX.get() - step);
+    // Update bottom belt (positive direction)
+    bottomX.set(bottomX.get() + step);
+  });
+
+  // Wrap the X values to create infinite loop
+  const totalWidth = imageCount * beltWidth;
+  const wrap = (v: number) => ((v % totalWidth) + totalWidth) % totalWidth;
+
+  const topWrapped = useTransform(topX, (v) => wrap(v));
+  const bottomWrapped = useTransform(bottomX, (v) => wrap(v));
+
+  // ---- Testimonials (unchanged) ----
+  const testimonials = [
+    { name: "Maria K.", role: "Founder", content: "Fastest way ive found to test branding ideas." },
+    { name: "Daniel R.", role: "Startup Founder", content: "clean resluts and very easy to use." },
+    { name: "Ahmad H.", role: "Entrepreneur", content: "Saved me alot of time honestly." },
+    { name: "Lena F.", role: "Designer", content: "good starting direction for visuals." },
+    { name: "Michael T.", role: "Developer", content: "smooth workflow and fast generation." },
+    { name: "Sofia M.", role: "Marketer", content: "clients liked the first concept already." },
+    { name: "Noah P.", role: "Builder", content: "simple tool but powerful output." },
+    { name: "Olivia C.", role: "Brand Strategist", content: "feels modern and easy to use." },
+    { name: "Elias G.", role: "Founder", content: "helped us move faster than usual." },
+    { name: "Arman A.", role: "Creator", content: "really helpful when starting from zero." },
+    { name: "Victor L.", role: "Agency", content: "Great for early visual direction." },
+    { name: "Isabelle L.", role: "Creative Lead", content: "animations feel premium." },
+    { name: "Lucas B.", role: "Indie Maker", content: "fastest branding workflow ive tried." },
+    { name: "Emily D.", role: "Designer", content: "colors feel balanced without tweaking." },
+    { name: "Jonas W.", role: "Founder", content: "simple idea executed really well." },
+    { name: "Maya S.", role: "Creator", content: "branding direction in minutes." },
+    { name: "Farid A.", role: "Developer", content: "clean export files which i like." },
+    { name: "Theo M.", role: "Indie Hacker", content: "makes ideation faster than usual tools." },
+    { name: "Sara A.", role: "Founder", content: "very helpful for early branding." },
+    { name: "Marco B.", role: "Designer", content: "minimal and effective workflow." },
+    { name: "Hikari Labs", role: "Startup", content: "helped us test brand directions quickly." },
+    { name: "Leo A.", role: "Builder", content: "quick results without overthinking." },
+    { name: "Nyx", role: "Creator", content: "honestly fun to play with." },
+    { name: "KittyCup", role: "Founder", content: "didnt expect it to be this fast lol." },
+    { name: "Amir K.", role: "Developer", content: "ui feels modern and fast." },
+    { name: "Julia N.", role: "Marketer", content: "helped clarify our visual direction." },
+    { name: "Rami K.", role: "Startup Owner", content: "really helpful when starting from zero." },
+    { name: "Victor & Co", role: "Agency", content: "great early branding concepts." },
+    { name: "Lukas S.", role: "Designer", content: "nice gradients and glow styling." },
+    { name: "Ava C.", role: "Creator", content: "super smooth experience overall." },
+    { name: "Hassan J.", role: "Entrepreneur", content: "I showed it to my team and they loved it." },
+    { name: "PixelNomad", role: "Designer", content: "use it when clients need fast ideas." },
+    { name: "NeonCat", role: "Creator", content: "fun tool but also useful." },
+    { name: "Atlas Studio", role: "Agency", content: "great for early concepting." },
+    { name: "Daniel W.", role: "Founder", content: "branding used to take weeks for me." },
+    { name: "Mika T.", role: "Builder", content: "kept generating concepts just for fun." },
+    { name: "Zara K.", role: "Marketer", content: "clients reacted fast to visuals." },
+    { name: "Noor A.", role: "Creator", content: "simple onboarding flow." },
+    { name: "Riz H.", role: "Maker", content: "super fast to test ideas." },
+    { name: "Aya M.", role: "Marketer", content: "branding direction in minutes." },
+    { name: "NeoMint", role: "Designer", content: "works great for ideation." },
+    { name: "Rami A.", role: "Entrepreneur", content: "fast results without confusion." },
+    { name: "CloudFox", role: "Creator", content: "honestly fun to use." },
+    { name: "Zed", role: "Developer", content: "minimal setup which i like." },
+    { name: "KitNova", role: "Founder", content: "feels polished already." },
+    { name: "Oasis Labs", role: "Startup", content: "helped us decide colors quickly." },
+    { name: "Nyx Studio", role: "Designer", content: "clean modern outputs." },
+    { name: "Juno P.", role: "Creator", content: "good tool for early stage founders." },
+    { name: "Axel R.", role: "Builder", content: "super smooth experience overall." },
+    { name: "Mariah L.", role: "Founder", content: "fast branding ideas without stress." },
+    { name: "Tariq H.", role: "Startup Owner", content: "easy branding for our team." },
+    { name: "VoltKid", role: "Maker", content: "not perfect but very useful." },
+    { name: "Aria S.", role: "Designer", content: "good starting point for identity systems." },
+    { name: "Nico F.", role: "Founder", content: "makes ideation faster than figma tbh." },
+    { name: "BlueKoala", role: "Creator", content: "workflow just makes sense." },
+    { name: "Kai L.", role: "Builder", content: "great for mvp stage brands." }
+  ];
+
+  // Used for the testimonial scroll (unchanged)
+  const x = useMotionValue(0);
   const baseSpeed = 0.03;
   const speed = useMotionValue(baseSpeed);
-
-  // Use a large enough track width for the loop
-  const trackWidth = 5000; 
-
-  // Custom modulo-like wrap logic for infinite scroll
+  const trackWidth = 5000;
   const wrappedX = useTransform(x, (v) => {
     const mod = v % (trackWidth / 3);
     return mod;
   });
-
-  // Background strip motion (separate, reversed direction)
-  const bgX = useMotionValue(0);
-  const bgY = useMotionValue(0);
-  const bgBaseSpeed = 0.015; // slower for subtle background effect
-  const bgSpeed = useMotionValue(bgBaseSpeed);
-  // One full cycle = 12 images × (384px + 48px gap) = 5184px
-  const bgCycleWidth = 5184;
-
-  const bgWrappedX = useTransform(bgX, (v) => {
-    const mod = (v % bgCycleWidth) - bgCycleWidth;
-    return mod;
-  });
-
-  const bgWrappedY = useTransform(bgY, (v) => {
-    const mod = (v % bgCycleWidth) - bgCycleWidth;
-    return mod;
-  });
-
   useAnimationFrame((t, delta) => {
     const currentSpeed = speed.get();
     x.set(x.get() - (delta * currentSpeed));
-    
-    // Background strip moves in opposite direction (left to right on desktop, top to bottom on mobile)
-    const bgCurrentSpeed = bgSpeed.get();
-    bgX.set(bgX.get() + (delta * bgCurrentSpeed));
-    bgY.set(bgY.get() + (delta * bgCurrentSpeed));
   });
 
+  // Subscribe newsletter (unchanged)
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -295,72 +365,48 @@ export default function Home() {
     }
   };
 
-  const testimonials = [
-    { name: "Maria K.", role: "Founder", content: "Fastest way ive found to test branding ideas." },
-    { name: "Daniel R.", role: "Startup Founder", content: "clean resluts and very easy to use." },
-    { name: "Ahmad H.", role: "Entrepreneur", content: "Saved me alot of time honestly." },
-    { name: "Lena F.", role: "Designer", content: "good starting direction for visuals." },
-    { name: "Michael T.", role: "Developer", content: "smooth workflow and fast generation." },
-    { name: "Sofia M.", role: "Marketer", content: "clients liked the first concept already." },
-    { name: "Noah P.", role: "Builder", content: "simple tool but powerful output." },
-    { name: "Olivia C.", role: "Brand Strategist", content: "feels modern and easy to use." },
-    { name: "Elias G.", role: "Founder", content: "helped us move faster than usual." },
-    { name: "Arman A.", role: "Creator", content: "really helpful when starting from zero." },
-    { name: "Victor L.", role: "Agency", content: "Great for early visual direction." },
-    { name: "Isabelle L.", role: "Creative Lead", content: "animations feel premium." },
-    { name: "Lucas B.", role: "Indie Maker", content: "fastest branding workflow ive tried." },
-    { name: "Emily D.", role: "Designer", content: "colors feel balanced without tweaking." },
-    { name: "Jonas W.", role: "Founder", content: "simple idea executed really well." },
-    { name: "Maya S.", role: "Creator", content: "branding direction in minutes." },
-    { name: "Farid A.", role: "Developer", content: "clean export files which i like." },
-    { name: "Theo M.", role: "Indie Hacker", content: "makes ideation faster than usual tools." },
-    { name: "Sara A.", role: "Founder", content: "very helpful for early branding." },
-    { name: "Marco B.", role: "Designer", content: "minimal and effective workflow." },
-    { name: "Hikari Labs", role: "Startup", content: "helped us test brand directions quickly." },
-    { name: "Leo A.", role: "Builder", content: "quick results without overthinking." },
-    { name: "Nyx", role: "Creator", content: "honestly fun to play with." },
-    { name: "KittyCup", role: "Founder", content: "didnt expect it to be this fast lol." },
-    { name: "Amir K.", role: "Developer", content: "ui feels modern and fast." },
-    { name: "Julia N.", role: "Marketer", content: "helped clarify our visual direction." },
-    { name: "Rami K.", role: "Startup Owner", content: "really helpful when starting from zero." },
-    { name: "Victor & Co", role: "Agency", content: "great early branding concepts." },
-    { name: "Lukas S.", role: "Designer", content: "nice gradients and glow styling." },
-    { name: "Ava C.", role: "Creator", content: "super smooth experience overall." },
-    { name: "Hassan J.", role: "Entrepreneur", content: "I showed it to my team and they loved it." },
-    { name: "PixelNomad", role: "Designer", content: "use it when clients need fast ideas." },
-    { name: "NeonCat", role: "Creator", content: "fun tool but also useful." },
-    { name: "Atlas Studio", role: "Agency", content: "great for early concepting." },
-    { name: "Daniel W.", role: "Founder", content: "branding used to take weeks for me." },
-    { name: "Mika T.", role: "Builder", content: "kept generating concepts just for fun." },
-    { name: "Zara K.", role: "Marketer", content: "clients reacted fast to visuals." },
-    { name: "Noor A.", role: "Creator", content: "simple onboarding flow." },
-    { name: "Riz H.", role: "Maker", content: "super fast to test ideas." },
-    { name: "Aya M.", role: "Marketer", content: "branding direction in minutes." },
-    { name: "NeoMint", role: "Designer", content: "works great for ideation." },
-    { name: "Rami A.", role: "Entrepreneur", content: "fast results without confusion." },
-    { name: "CloudFox", role: "Creator", content: "honestly fun to use." },
-    { name: "Zed", role: "Developer", content: "minimal setup which i like." },
-    { name: "KitNova", role: "Founder", content: "feels polished already." },
-    { name: "Oasis Labs", role: "Startup", content: "helped us decide colors quickly." },
-    { name: "Nyx Studio", role: "Designer", content: "clean modern outputs." },
-    { name: "Juno P.", role: "Creator", content: "good tool for early stage founders." },
-    { name: "Axel R.", role: "Builder", content: "super smooth experience overall." },
-    { name: "Mariah L.", role: "Founder", content: "fast branding ideas without stress." },
-    { name: "Tariq H.", role: "Startup Owner", content: "easy branding for our team." },
-    { name: "VoltKid", role: "Maker", content: "not perfect but very useful." },
-    { name: "Aria S.", role: "Designer", content: "good starting point for identity systems." },
-    { name: "Nico F.", role: "Founder", content: "makes ideation faster than figma tbh." },
-    { name: "BlueKoala", role: "Creator", content: "workflow just makes sense." },
-    { name: "Kai L.", role: "Builder", content: "great for mvp stage brands." }
-  ];
-
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <TopBar />
-      <section className="flex flex-col items-center justify-center min-h-[80vh] text-center px-4 py-20 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
-        
-        <div className="space-y-6 max-w-4xl relative z-10">
+
+      {/* ---- HERO SECTION with two image belts ---- */}
+      <section className="relative flex flex-col items-center justify-center min-h-screen text-center px-4 py-20 overflow-hidden">
+        {/* Top belt – moving right → left */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+          <motion.div 
+            className="flex gap-6 absolute top-1/4 left-0"
+            style={{ x: topWrapped }}
+          >
+            {[...beltImages, ...beltImages, ...beltImages].map((img, i) => (
+              <div key={`top-${i}`} className="shrink-0 w-64 h-64 md:w-80 md:h-80 relative rounded-2xl overflow-hidden">
+                <img src={img} alt="" className="w-full h-full object-contain blur opacity-50 brightness-75" />
+              </div>
+            ))}
+          </motion.div>
+        </div>
+
+        {/* Bottom belt – moving left → right */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+          <motion.div 
+            className="flex gap-6 absolute bottom-1/4 left-0"
+            style={{ x: bottomWrapped }}
+          >
+            {[...beltImages, ...beltImages, ...beltImages].map((img, i) => (
+              <div key={`bottom-${i}`} className="shrink-0 w-64 h-64 md:w-80 md:h-80 relative rounded-2xl overflow-hidden">
+                <img src={img} alt="" className="w-full h-full object-contain blur opacity-50 brightness-75" />
+              </div>
+            ))}
+          </motion.div>
+        </div>
+
+        {/* Gradient overlays to fade edges */}
+        <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-background to-transparent pointer-events-none z-10" />
+        <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-background to-transparent pointer-events-none z-10" />
+        <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-background to-transparent pointer-events-none z-10" />
+        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background to-transparent pointer-events-none z-10" />
+
+        {/* Hero content (on top) */}
+        <div className="relative z-20 max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -377,7 +423,7 @@ export default function Home() {
             </Badge>
           </motion.div>
           
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-balance leading-[1.1]" data-testid="text-headline">
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-balance leading-[1.1] mt-6" data-testid="text-headline">
             {heroLines.map((line, i) => (
               <motion.span
                 key={i}
@@ -397,9 +443,9 @@ export default function Home() {
             transition={{ duration: 0.3, delay: 0.5 }}
           >
             <Typewriter
-              text={SUBTEXT}
+              text="Work with an AI identity designer that thinks through your brand with you, refining direction, taste, and meaning."
               delay={0.6}
-              className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto min-h-[3em]"
+              className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto min-h-[3em] mt-4"
             />
           </motion.div>
 
@@ -407,7 +453,7 @@ export default function Home() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.6 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4"
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-6"
           >
             <Button 
               size="lg" 
@@ -433,49 +479,9 @@ export default function Home() {
           </motion.div>
         </div>
       </section>
+
+      {/* ---- HOW IT WORKS (no background belt) ---- */}
       <section className="relative py-24 px-4 bg-muted/30 overflow-hidden">
-        {/* Background moving image strip — DESKTOP: horizontal left→right */}
-        <div className="hidden sm:flex absolute inset-0 overflow-hidden pointer-events-none z-0 items-center">
-          <motion.div 
-            className="flex gap-12"
-            style={{ x: bgWrappedX, width: "fit-content" }}
-          >
-            {[
-              bgImg1, bgImg2, bgImg3, bgImg4, bgImg5, bgImg6,
-              bgImg7, bgImg8, bgImg9, bgImg10, bgImg11, bgImg12,
-              bgImg1, bgImg2, bgImg3, bgImg4, bgImg5, bgImg6,
-              bgImg7, bgImg8, bgImg9, bgImg10, bgImg11, bgImg12,
-            ].map((img, i) => (
-              <div key={i} className="shrink-0 min-w-96 h-96 relative rounded-2xl overflow-hidden">
-                <img src={img} alt="" className="w-full h-full object-contain blur opacity-25 brightness-78" />
-              </div>
-            ))}
-          </motion.div>
-          <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-muted/30 to-transparent pointer-events-none z-10" />
-          <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-muted/30 to-transparent pointer-events-none z-10" />
-        </div>
-
-        {/* Background moving image strip — MOBILE: vertical top→bottom */}
-        <div className="flex sm:hidden absolute inset-0 overflow-hidden pointer-events-none z-0 justify-center">
-          <motion.div 
-            className="flex flex-col gap-12"
-            style={{ y: bgWrappedY, height: "fit-content" }}
-          >
-            {[
-              bgImg1, bgImg2, bgImg3, bgImg4, bgImg5, bgImg6,
-              bgImg7, bgImg8, bgImg9, bgImg10, bgImg11, bgImg12,
-              bgImg1, bgImg2, bgImg3, bgImg4, bgImg5, bgImg6,
-              bgImg7, bgImg8, bgImg9, bgImg10, bgImg11, bgImg12,
-            ].map((img, i) => (
-              <div key={`m-${i}`} className="shrink-0 min-w-96 h-96 relative rounded-2xl overflow-hidden">
-                <img src={img} alt="" className="w-full h-full object-contain blur opacity-25 brightness-78" />
-              </div>
-            ))}
-          </motion.div>
-          <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-muted/30 to-transparent pointer-events-none z-10" />
-          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-muted/30 to-transparent pointer-events-none z-10" />
-        </div>
-
         <div className="relative z-10 max-w-6xl mx-auto">
           <motion.h2 
             initial={{ opacity: 0, y: -80 }}
@@ -501,6 +507,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* ---- LOVED BY FOUNDERS (testimonials, unchanged) ---- */}
       <section className="py-24 px-4 overflow-hidden">
         <div className="max-w-6xl mx-auto">
           <motion.h2 
@@ -545,11 +553,14 @@ export default function Home() {
           </div>
         </div>
       </section>
+
       <div className="px-4 -mt-16 mb-4">
         <p className="text-[10px] text-white/20 leading-tight">
           Displayed comments are simulated for demonstration purposes.
         </p>
       </div>
+
+      {/* ---- NEWSLETTER + FOOTER (unchanged) ---- */}
       <motion.section 
         initial={{ opacity: 0, filter: "blur(12px)", y: 24 }}
         whileInView={{ opacity: 1, filter: "blur(0px)", y: 0 }}
@@ -641,6 +652,7 @@ export default function Home() {
           </div>
         </div>
       </motion.section>
+
       <footer className="py-20 px-4 border-t border-border mt-auto">
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-8 items-center md:items-start">
           <div className="flex flex-col items-center md:items-start gap-4 -mt-4">
@@ -674,6 +686,6 @@ export default function Home() {
           </nav>
         </div>
       </footer>
-    </div >
+    </div>
   );
 }
