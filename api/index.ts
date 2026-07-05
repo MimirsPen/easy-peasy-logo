@@ -81,6 +81,8 @@ setInterval(() => {
   console.log("MEM", JSON.stringify(process.memoryUsage()));
 }, 5000);
 
+// Register routes, setup static (prod) or Vite (dev)
+// No listen() call – Vercel handles the server.
 (async () => {
   // 2. Register routes
   // IMPORTANT: The webhook route must be registered BEFORE the global express.json()
@@ -111,25 +113,8 @@ setInterval(() => {
     await setupVite(httpServer, app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || "5000", 10);
-  httpServer.listen(
-    {
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    },
-    () => {
-      log(`serving on port ${port}`);
-      log(`startup NODE_ENV=${process.env.NODE_ENV} PORT=${port}`);
-    },
-  );
-})().catch((err) => {
-  console.error("[crash] Server startup failed:", err);
-  process.exit(1);
-});
+  // No httpServer.listen() – for Vercel serverless, we just export the app.
+})();
 
-export = app;
+// Export the app as the default (ESM) – Vercel expects this.
+export default app;
