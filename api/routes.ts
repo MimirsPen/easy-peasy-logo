@@ -413,9 +413,9 @@ export async function registerRoutes(
     }
   });
 
-  app.get(api.health.path, (req, res) => {
-    res.json({ status: "ok" });
-  });
+  app.get("/api/health", (req, res) => {
+  res.json({ status: "ok" });
+});
 
   app.post("/api/delete-account", async (req, res) => {
     try {
