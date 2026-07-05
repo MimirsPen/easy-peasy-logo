@@ -139,8 +139,14 @@ export function registerRoutes(
     try {
       const apiUrl = process.env.VITE_API_BASE_URL;
       if (!apiUrl) {
+        console.error("[proxy] VITE_API_BASE_URL is not configured");
         return res.status(500).json({ error: "VITE_API_BASE_URL is not configured" });
       }
+
+      // Log request details
+      console.log("[proxy] generate-logo request received");
+      console.log("[proxy] Content-Type:", req.headers["content-type"]);
+      console.log("[proxy] Query:", req.query);
 
       // Collect the raw stream — express.json() does not consume multipart bodies
       const chunks: Buffer[] = [];
@@ -148,6 +154,7 @@ export function registerRoutes(
         chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
       }
       const rawBody = Buffer.concat(chunks);
+      console.log("[proxy] Raw body size:", rawBody.length);
 
       // Forward to n8n preserving the multipart boundary in Content-Type
       const upstream = await fetch(apiUrl, {
@@ -158,12 +165,15 @@ export function registerRoutes(
         body: rawBody,
       });
 
+      console.log("[proxy] n8n responded with status:", upstream.status);
+
       if (!upstream.ok) {
         console.error(`[proxy] n8n returned ${upstream.status}`);
         return res.status(upstream.status).json({ error: `Upstream error: ${upstream.status}` });
       }
 
       const data = await upstream.json();
+      console.log("[proxy] n8n response:", JSON.stringify(data).slice(0, 200));
       res.json(data);
     } catch (err: any) {
       console.error("[proxy] generate-logo error:", err.message);
@@ -310,24 +320,23 @@ export function registerRoutes(
         console.error("[callback] logo_gallery save failed:", dbErr.message);
       }
 
-      // No WebSocket – just acknowledge receipt and rely on the frontend to poll/refresh.
-      // The frontend will fetch updated messages separately.
-      console.log(`[callback] processed for project ${projectId} (WebSocket disabled on Vercel)`);
-      res.json({ received: true, delivered: false, reason: "ws_not_supported" });
+      // Update generation_status to "completed" so Realtime can notify the frontend
+      console.log(`[callback] Setting generation_status to "completed" for project ${projectId}`);
+      const { error: statusError } = await supabaseAdmin
+        .from("projects")
+        .update({ generation_status: "completed" })
+        .eq("project_id", projectId);
+
+      if (statusError) {
+        console.error("[callback] generation_status update error:", statusError.message);
+      } else {
+        console.log(`[callback] generation_status updated to "completed" for project ${projectId}`);
+      }
+
+      res.json({ received: true, delivered: true });
     } catch (err: any) {
       console.error("[callback] error:", err.message);
       res.status(500).json({ error: "Internal server error" });
-    } finally {
-      const { projectId } = req.body;
-      if (projectId) {
-        supabaseAdmin
-          .from("projects")
-          .update({ generation_status: "completed" })
-          .eq("project_id", projectId)
-          .then(({ error }) => {
-            if (error) console.error("[callback] generation_status clear error:", error.message);
-          })
-      }
     }
   });
 
