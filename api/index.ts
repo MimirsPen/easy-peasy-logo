@@ -132,4 +132,4 @@ setInterval(() => {
   process.exit(1);
 });
 
-export default app;
+export = app;
