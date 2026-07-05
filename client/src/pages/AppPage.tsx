@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabaseClient";
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/state/AuthContext";
 import { useUser } from "@/state/UserContext";
@@ -122,12 +122,10 @@ export default function AppPage() {
   const { state: chatState, addMessage, setMessages, updateMessage } = useChat();
   const { state: generationState, setStatus, addImages, setImages } = useGeneration();
   const inputRef = useRef<HTMLInputElement>(null);
-  const wsRef = useRef<WebSocket | null>(null);
   const genTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeGenerationProjectIdRef = useRef<string | null>(null);
-  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // Holds the always-current WS message handler to avoid stale closures
-  const onWsMessageRef = useRef<(data: any) => void | Promise<void>>(() => {});
+  // Realtime channel ref for cleanup
+  const realtimeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
     // Initial focus on load
@@ -696,7 +694,7 @@ export default function AppPage() {
         setStatus('running');
         addSystemMessage("Creating concepts...");
       } else if (isGenerating && options?.skipMessages) {
-        // Polling tick: just keep the dots alive
+        // Polling tick: just keep the dots alive (this branch will be removed)
         setSendingProjects(prev => ({ ...prev, [projectId]: true }));
         setStatus('running');
       } else if (!isGenerating && !options?.skipMessages) {
@@ -718,32 +716,47 @@ export default function AppPage() {
       return isGenerating;
     };
 
-    const startPolling = () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-        pollIntervalRef.current = null;
-      }
-      pollIntervalRef.current = setInterval(async () => {
-        const stillGenerating = await loadHistory({ skipMessages: true, skipScroll: true });
-        if (!stillGenerating) {
-          // One final full refresh to show the new chat bubbles
-          await loadHistory({ skipScroll: true });
-          if (pollIntervalRef.current) {
-            clearInterval(pollIntervalRef.current);
-            pollIntervalRef.current = null;
+    // --- Supabase Realtime subscription for generation status ---
+    // Clean up any previous channel
+    if (realtimeChannelRef.current) {
+      supabase.removeChannel(realtimeChannelRef.current);
+      realtimeChannelRef.current = null;
+    }
+
+    const channel = supabase
+      .channel(`project-${projectId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'projects',
+          filter: `project_id=eq.${projectId}`
+        },
+        (payload) => {
+          if (payload.new.generation_status === 'completed') {
+            console.log('[Realtime] Generation completed for project', projectId);
+            // Stop loading state
+            setStatus('idle');
+            stopLoadingTimer();
+            setSendingProjects(prev => { const n = { ...prev }; delete n[projectId]; return n; });
+            
+            // Reload full history to show new logos and messages
+            loadHistory({ skipScroll: false });
           }
         }
-      }, 5000); // 5-second tick
-    };
+      )
+      .subscribe();
 
-    loadHistory().then(isGenerating => {
-      if (isGenerating) startPolling();
-    });
+    realtimeChannelRef.current = channel;
+
+    // Initial load
+    loadHistory();
 
     return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-        pollIntervalRef.current = null;
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current);
+        realtimeChannelRef.current = null;
       }
     };
   }, [authState.isAuthenticated, projectState.activeProject?.project_id]);
@@ -914,112 +927,6 @@ export default function AppPage() {
     setTimeout(() => fileInputRef.current?.click(), 50);
   };
 
-  // Always-fresh WS handler — runs on every render so it never has a stale closure.
-  // The WebSocket event listener delegates here via onWsMessageRef.current(data).
-  onWsMessageRef.current = async (data: any) => {
-    console.log("DEBUG: WebSocket message received:", data);
-
-    if (data.type !== "generation_complete") return;
-
-    // Stop dots and loading timer immediately — before any other work.
-    setStatus("idle");
-    stopLoadingTimer();
-
-    // Stop the 5-minute safety timeout
-    if (genTimeoutRef.current) {
-      clearTimeout(genTimeoutRef.current);
-      genTimeoutRef.current = null;
-    }
-
-    const pid: string = data.projectId || activeGenerationProjectIdRef.current || projectState.activeProject?.project_id || "";
-    activeGenerationProjectIdRef.current = null;
-
-    // Render the designer's text response, embedding concept URLs so
-    // renderDesignerContent can display them inline under the message.
-    if (data.text || data.concept_1_url || data.concept_2_url) {
-      const assistantMsg: ChatMessage = {
-        chat_message_id: crypto.randomUUID(),
-        project_id: pid,
-        sender: "designer",
-        content: data.text || "",
-        created_at: new Date().toISOString(),
-        concept_1_url: data.concept_1_url || undefined,
-        concept_1_title: data.concept_1_title || undefined,
-        concept_2_url: data.concept_2_url || undefined,
-        concept_2_title: data.concept_2_title || undefined,
-      };
-      addMessage(assistantMsg);
-      // Clear loading state as soon as the message lands in the chat array
-      setSendingProjects(prev => { const n = { ...prev }; delete n[pid]; return n; });
-      if (authState?.isAuthenticated && pid) {
-        try {
-          const { error } = await supabase
-            .from("chat_messages")
-            .insert({
-              project_id: pid,
-              sender: "designer",
-              content: data.text || "",
-              user_id: userState.user?.user_id ?? null,
-            });
-          if (error) console.error("[ws] chat_messages insert failed:", error.message, error.details);
-        } catch (err) {
-          console.error("[ws] chat_messages insert threw:", err);
-        }
-      }
-    }
-
-    // Render concept images
-    const hasConceptUrls = data.concept_1_url || data.concept_2_url;
-    if (hasConceptUrls) {
-      setStatus("idle");
-      stopLoadingTimer();
-
-      const conceptPairs: { url: string; title: string }[] = [];
-      if (data.concept_1_url)
-        conceptPairs.push({ url: data.concept_1_url, title: data.concept_1_title || "Concept 1" });
-      if (data.concept_2_url)
-        conceptPairs.push({ url: data.concept_2_url, title: data.concept_2_title || "Concept 2" });
-
-      const newImages: GeneratedImage[] = conceptPairs.map(({ url, title }) => ({
-        generated_image_id: crypto.randomUUID(),
-        project_id: pid,
-        url,
-        title,
-        created_at: new Date().toISOString(),
-        expires_at: new Date(Date.now() + 30 * 86400000).toISOString(),
-      }));
-
-      if (newImages.length > 0) {
-        // Always save to global gallery immediately.
-        addImages(newImages);
-
-        // Force the popup open for every generation_complete — no project ID gate.
-        setViewerImages(newImages);
-        setViewerIndex(0);
-        setViewerOpen(true);
-        setArchiveOpen(false);
-
-        // DEBUG: confirm popup was triggered; alert if state somehow doesn't respond.
-        console.log("DEBUG: setViewerOpen(true) called with images:", newImages);
-        setTimeout(() => {
-          // Give React one tick to commit state, then verify the viewer is open.
-          // If viewerImages is still empty something is blocking state updates.
-          if (newImages.length > 0 && !document.querySelector('[data-testid="img-viewer-current"]')) {
-            alert("DEBUG: Logos received but popup failed to open! Check state.");
-          }
-        }, 500);
-
-      }
-    } else {
-      setStatus("idle");
-      stopLoadingTimer();
-    }
-
-    // Release the input lock
-    if (pid) setSendingProjects(prev => { const n = { ...prev }; delete n[pid]; return n; });
-    setTimeout(() => inputRef.current?.focus(), 0);
-  };
-
   const onSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     
@@ -1159,9 +1066,8 @@ export default function AppPage() {
     setActiveImageUsage(null);
     setGenError(null);
 
-    // Flag set to true when n8n returns "generation_started" — the WS handler
-    // takes responsibility for cleanup, so the finally block must skip it.
-    let handedOffToWs = false;
+    // Flag set to true when n8n returns "generation_started" — the Realtime handler takes over cleanup
+    let handedOffToRealtime = false;
 
     try {
       const resolvedProjectId = projectState.activeProject?.project_id || projectId || "";
@@ -1180,8 +1086,6 @@ export default function AppPage() {
 
       startLoadingTimer();
 
-      // Pass sessionId + projectId as query params so the server can register
-      // the WS routing entry before n8n starts processing.
       const fetchUrl = `/api/generate-logo?sessionId=${encodeURIComponent(sessionId ?? "")}&projectId=${encodeURIComponent(resolvedProjectId)}`;
 
       const res = await fetch(fetchUrl, {
@@ -1205,10 +1109,9 @@ export default function AppPage() {
         concept_2_url?: string;
       } = await res.json();
 
-      // --- NEW: async generation via WebSocket callback ---
-      // n8n Workflow 1 returns this immediately; the final result arrives via WS.
-      if (data.status === "generation_started") {
-        handedOffToWs = true;
+      // --- Async generation via Realtime (no WebSocket) ---
+      if (data.status === "generation_started" || data.status === "starting_generation") {
+        handedOffToRealtime = true;
         activeGenerationProjectIdRef.current = projectId;
         setStatus("running");
         addSystemMessage("Creating concepts...");
@@ -1225,7 +1128,7 @@ export default function AppPage() {
           setTimeout(() => inputRef.current?.focus(), 0);
         }, 300_000); // 5-minute safety net
 
-        return; // WS handler takes over — finally block skips cleanup via handedOffToWs
+        return; // Realtime handler will take over when generation_status becomes "completed"
       }
 
       if (data.trigger_modal === "signup_required") {
@@ -1240,33 +1143,6 @@ export default function AppPage() {
         setAuthModalContext("generation");
         setAuthModalOpen(true);
         return;
-      }
-
-      if (data.status === "starting_generation") {
-        if (!authState.isAuthenticated || !userState.user?.user_id) {
-          requireAuth("limit");
-          if (projectId) setSendingProjects(prev => { const n = {...prev}; delete n[projectId!]; return n; });
-          setTimeout(() => inputRef.current?.focus(), 0);
-          return;
-        }
-        // Flag as handed off so finally block doesn't clear loading state prematurely
-        handedOffToWs = true;
-        activeGenerationProjectIdRef.current = projectId;
-        setStatus('running');
-        addSystemMessage("Creating concepts...");
-
-        // Safety timeout — same 5-minute backstop as generation_started path
-        if (genTimeoutRef.current) clearTimeout(genTimeoutRef.current);
-        genTimeoutRef.current = setTimeout(() => {
-          setGenError("Generation timed out. Please try again.");
-          setStatus("idle");
-          stopLoadingTimer();
-          const timedOutPid = activeGenerationProjectIdRef.current || projectState.activeProject?.project_id;
-          if (timedOutPid) setSendingProjects(prev => { const n = { ...prev }; delete n[timedOutPid]; return n; });
-          activeGenerationProjectIdRef.current = null;
-          genTimeoutRef.current = null;
-          setTimeout(() => inputRef.current?.focus(), 0);
-        }, 300_000);
       }
 
       const assistantMsg: ChatMessage = {
@@ -1341,7 +1217,6 @@ export default function AppPage() {
           setViewerIndex(0);
           setViewerOpen(true);
           setArchiveOpen(false);
-
         }
       }
 
@@ -1361,8 +1236,8 @@ export default function AppPage() {
         stopLoadingTimer();
       }
     } finally {
-      // When handedOffToWs is true, the WS handler owns cleanup — skip here.
-      if (!handedOffToWs) {
+      // When handedOffToRealtime is true, the Realtime handler owns cleanup — skip here.
+      if (!handedOffToRealtime) {
         if (projectId) setSendingProjects(prev => { const n = {...prev}; delete n[projectId!]; return n; });
         setTimeout(() => inputRef.current?.focus(), 0);
       }
