@@ -1,16 +1,8 @@
 import type { Express } from "express";
 import type { Server } from "http";
-import { storage } from "./storage";
-import { api } from "@shared/routes";
 import Stripe from "stripe";
 import express from "express";
 import { createClient } from "@supabase/supabase-js";
-import { WebSocketServer, WebSocket } from "ws";
-
-// Session → WebSocket connection map (routes generation callbacks to the right browser tab)
-const sessionClients = new Map<string, WebSocket>();
-// projectId → sessionId map (populated when generate-logo fires, consumed by logo-callback)
-const projectSession = new Map<string, string>();
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2026-01-28.clover",
@@ -27,37 +19,6 @@ export function registerRoutes(
   httpServer: Server,
   app: Express
 ): Server {
-  // --- WEBSOCKET SERVER ---
-  const wss = new WebSocketServer({ noServer: true });
-
-  httpServer.on("upgrade", (request, socket, head) => {
-    const url = new URL(request.url!, `http://${request.headers.host}`);
-    if (url.pathname === "/ws") {
-      wss.handleUpgrade(request, socket as any, head, (ws) => {
-        wss.emit("connection", ws, request);
-      });
-    }
-    // Non-/ws upgrades (e.g. /vite-hmr) fall through to Vite's own listener.
-  });
-
-  wss.on("connection", (ws: WebSocket, request: any) => {
-    const url = new URL(request.url!, `http://${request.headers.host}`);
-    const sid = url.searchParams.get("sessionId") || "";
-    if (sid) {
-      sessionClients.set(sid, ws);
-      console.log(`[ws] connected sid=${sid} total=${sessionClients.size}`);
-    }
-    ws.on("close", () => {
-      if (sid) {
-        sessionClients.delete(sid);
-        console.log(`[ws] disconnected sid=${sid}`);
-      }
-    });
-    ws.on("error", (err: Error) => {
-      console.error(`[ws] error sid=${sid}:`, err.message);
-    });
-  });
-
   // --- STRIPE WEBHOOK (MUST BE FIRST) ---
   app.post(
     "/api/stripe-webhook",
@@ -174,34 +135,11 @@ export function registerRoutes(
   );
 
   // --- GENERATE LOGO PROXY (MUST BE BEFORE express.json() TO READ RAW BODY) ---
-  // Buffers the browser's raw multipart/form-data body and forwards it
-  // unchanged to the n8n webhook.
-  // Query params ?sessionId=&projectId= are used to register the WS route
-  // so the /api/logo-callback can push the result back to the right tab.
   app.post("/api/generate-logo", async (req, res) => {
     try {
       const apiUrl = process.env.VITE_API_BASE_URL;
       if (!apiUrl) {
         return res.status(500).json({ error: "VITE_API_BASE_URL is not configured" });
-      }
-
-      // Register session→project mapping for async WS delivery
-      const wsSessionId = (req.query.sessionId as string) || "";
-      const wsProjectId = (req.query.projectId as string) || "";
-      if (wsSessionId && wsProjectId) {
-        projectSession.set(wsProjectId, wsSessionId);
-        console.log(`[proxy] registered session sid=${wsSessionId} pid=${wsProjectId}`);
-      }
-
-      // Mark project as generating in the database
-      if (wsProjectId) {
-        supabaseAdmin
-          .from("projects")
-          .update({ generation_status: "generating" })
-          .eq("project_id", wsProjectId)
-          .then(({ error }) => {
-            if (error) console.error("[generate-logo] generation_status update error:", error.message);
-          })
       }
 
       // Collect the raw stream — express.json() does not consume multipart bodies
@@ -313,7 +251,6 @@ export function registerRoutes(
   });
 
   // --- LOGO CALLBACK (called by n8n after async generation) ---
-  // n8n posts the finished result here; we push it to the waiting browser tab via WS.
   app.post("/api/logo-callback", async (req, res) => {
     try {
       console.log("FULL CALLBACK DATA:", req.body);
@@ -373,29 +310,10 @@ export function registerRoutes(
         console.error("[callback] logo_gallery save failed:", dbErr.message);
       }
 
-      const payload = JSON.stringify({
-        type: "generation_complete",
-        projectId,
-        text: response || "",
-        concept_1_title: concept_1_title || "",
-        concept_1_url: concept_1_url || "",
-        concept_2_title: concept_2_title || "",
-        concept_2_url: concept_2_url || "",
-      });
-
-      const sid = projectSession.get(projectId);
-      const ws = sid ? sessionClients.get(sid) : undefined;
-
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(payload);
-        projectSession.delete(projectId);
-        console.log(`[callback] delivered via WS sid=${sid} pid=${projectId}`);
-        res.json({ received: true, delivered: true });
-      } else {
-        console.warn(`[callback] no open WS for pid=${projectId} sid=${sid ?? "none"} — returning 200`);
-        if (sid) projectSession.delete(projectId);
-        res.json({ received: true, delivered: false, reason: "no_open_ws" });
-      }
+      // No WebSocket – just acknowledge receipt and rely on the frontend to poll/refresh.
+      // The frontend will fetch updated messages separately.
+      console.log(`[callback] processed for project ${projectId} (WebSocket disabled on Vercel)`);
+      res.json({ received: true, delivered: false, reason: "ws_not_supported" });
     } catch (err: any) {
       console.error("[callback] error:", err.message);
       res.status(500).json({ error: "Internal server error" });
@@ -414,26 +332,20 @@ export function registerRoutes(
   });
 
   app.get("/api/health", (req, res) => {
-  res.json({ status: "ok" });
-});
+    res.json({ status: "ok" });
+  });
 
   app.post("/api/delete-account", async (req, res) => {
     try {
       const { userId } = req.body;
-
       if (!userId || typeof userId !== "string") {
         return res.status(400).json({ error: "Missing or invalid userId" });
       }
-
-      // Delete user from Supabase Auth using admin API
-      // This will trigger database cascades to delete all related data
       const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
-
       if (error) {
         console.error("Failed to delete user:", error);
         return res.status(500).json({ error: "Failed to delete account" });
       }
-
       res.json({ success: true });
     } catch (err: any) {
       console.error("Delete account error:", err.message);
@@ -444,11 +356,9 @@ export function registerRoutes(
   app.post("/api/check-subscription-cancel-at", async (req, res) => {
     try {
       const { userId } = req.body;
-
       if (!userId || typeof userId !== "string") {
         return res.status(400).json({ error: "User ID is required" });
       }
-
       const { data: subscription, error: queryError } = await supabaseAdmin
         .from("user_subscriptions")
         .select("cancel_at")
@@ -474,12 +384,10 @@ export function registerRoutes(
   app.post("/api/create-billing-portal-session", async (req, res) => {
     try {
       const { userId } = req.body;
-
       if (!userId || typeof userId !== "string") {
         return res.status(400).json({ error: "User ID is required" });
       }
 
-      // Query user_subscriptions to get stripe_customer_id
       const { data: subscription, error: queryError } = await supabaseAdmin
         .from("user_subscriptions")
         .select("stripe_customer_id, subscription_status")
@@ -517,7 +425,6 @@ export function registerRoutes(
 
     try {
       const { priceId, quantity, userId } = req.body;
-      
       console.log("PRICE ID:", priceId);
       console.log("USER ID:", userId);
       console.log("QUANTITY:", quantity);
@@ -531,12 +438,10 @@ export function registerRoutes(
       }
 
       const PRICE_CREDIT_MAP: Record<string, number> = {
-        // Top-Ups
         "price_1T2Rhc1ly8rEUw056M6TKESM": 100,
         "price_1T2Ri91ly8rEUw05q6nojIYC": 500,
         "price_1T2Rib1ly8rEUw05Yi2teTxQ": 1000,
-        "price_1T2RbA1ly8rEUw057ADvOKGW": 100, // Starter Pack
-        // Subscriptions
+        "price_1T2RbA1ly8rEUw057ADvOKGW": 100,
         "price_1T2Rk31ly8rEUw05ow0gBcXH": 200,
         "price_1T2Rkt1ly8rEUw05HUo3KYl1": 600,
         "price_1T2Rmr1ly8rEUw05KumYzkLY": 1200
