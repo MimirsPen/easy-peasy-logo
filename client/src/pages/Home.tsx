@@ -15,13 +15,11 @@ import { ArrowRight } from "lucide-react";
 import logoIcon from "@assets/LOGO-removebg-preview_1771145708755.png";
 
 // ---- Dynamic image imports (all 22 images) ----
-// Rename your assets to 1.png … 22.png and place them in the assets folder
-const imageModules = import.meta.glob("@assets/*.webp", { eager: true, import: "default" });
-// Filter only numbered files: 1.png … 22.png
+const imageModules = import.meta.glob("@assets/*.{png,webp}", { eager: true, import: "default" });
 const imagePaths = Object.keys(imageModules)
   .filter((path) => {
     const name = path.split("/").pop() || "";
-    return /^[0-9]+\.webp$/.test(name) && parseInt(name, 10) <= 22;
+    return /^[0-9]+\.(png|webp)$/.test(name) && parseInt(name, 10) <= 22;
   })
   .sort((a, b) => {
     const n1 = parseInt(a.split("/").pop() || "0", 10);
@@ -30,10 +28,7 @@ const imagePaths = Object.keys(imageModules)
   });
 const allImages = imagePaths.map((path) => imageModules[path]);
 
-// If you have exactly 22 images, this will load them. If not, add a fallback.
-// Ensure the filenames are exactly "1.png", "2.png", ... "22.png".
-
-// ---- Typewriter and WordReveal components (unchanged) ----
+// ---- Typewriter and WordReveal components ----
 function Typewriter({ 
   text, 
   className, 
@@ -192,16 +187,14 @@ export default function Home() {
     }
   ];
 
-  const [activeStep, setActiveStep] = useState(0);
-  
-  // ---- Image belts (two strips) ----
+  // ---- IMAGE BELTS (INFINITE) ----
   const beltImages = allImages.length > 0 ? allImages : [];
-  // If you don't have 22 images yet, we'll fill with placeholders (but you should have them)
-  const imageCount = beltImages.length > 0 ? beltImages.length : 22; // fallback to 22
+  const imageCount = beltImages.length > 0 ? beltImages.length : 22;
+  const beltSpeed = 0.025;
 
-  // Motion values for the two belts
-  const beltSpeed = 0.02; // pixels per frame
-  const beltWidth = 350; // approximate width per image + gap
+  // Each item: w-64 (256px) + gap-6 (24px) = 280px
+  const itemWidth = 280;
+  const totalWidth = imageCount * itemWidth;
 
   // Top belt: moves right → left (negative direction)
   const topX = useMotionValue(0);
@@ -210,20 +203,19 @@ export default function Home() {
 
   useAnimationFrame((t, delta) => {
     const step = delta * beltSpeed;
-    // Update top belt (negative direction)
-    topX.set(topX.get() - step);
-    // Update bottom belt (positive direction)
-    bottomX.set(bottomX.get() + step);
+
+    // Top belt: move left (decrease x)
+    let newTop = topX.get() - step;
+    if (newTop < -totalWidth) newTop += totalWidth;
+    topX.set(newTop);
+
+    // Bottom belt: move right (increase x)
+    let newBottom = bottomX.get() + step;
+    if (newBottom > totalWidth) newBottom -= totalWidth;
+    bottomX.set(newBottom);
   });
 
-  // Wrap the X values to create infinite loop
-  const totalWidth = imageCount * beltWidth;
-  const wrap = (v: number) => ((v % totalWidth) + totalWidth) % totalWidth;
-
-  const topWrapped = useTransform(topX, (v) => wrap(v));
-  const bottomWrapped = useTransform(bottomX, (v) => wrap(v));
-
-  // ---- Testimonials (unchanged) ----
+  // ---- TESTIMONIALS (INFINITE) ----
   const testimonials = [
     { name: "Maria K.", role: "Founder", content: "Fastest way ive found to test branding ideas." },
     { name: "Daniel R.", role: "Startup Founder", content: "clean resluts and very easy to use." },
@@ -283,21 +275,23 @@ export default function Home() {
     { name: "Kai L.", role: "Builder", content: "great for mvp stage brands." }
   ];
 
-  // Used for the testimonial scroll (unchanged)
-  const x = useMotionValue(0);
-  const baseSpeed = 0.03;
-  const speed = useMotionValue(baseSpeed);
-  const trackWidth = 5000;
-  const wrappedX = useTransform(x, (v) => {
-    const mod = v % (trackWidth / 3);
-    return mod;
-  });
+  const cardWidth = 350; // min width + gap
+  const gap = 24;
+  const itemTotal = cardWidth + gap;
+  const testimonialSpeed = 0.025;
+
+  const allTestimonials = [...testimonials, ...testimonials, ...testimonials, ...testimonials];
+  const totalTestimonialWidth = allTestimonials.length * itemTotal;
+
+  const testX = useMotionValue(0);
+
   useAnimationFrame((t, delta) => {
-    const currentSpeed = speed.get();
-    x.set(x.get() - (delta * currentSpeed));
+    let newX = testX.get() - delta * testimonialSpeed;
+    if (newX < -totalTestimonialWidth) newX += totalTestimonialWidth;
+    testX.set(newX);
   });
 
-  // Subscribe newsletter (unchanged)
+  // ---- Newsletter ----
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -369,13 +363,13 @@ export default function Home() {
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <TopBar />
 
-      {/* ---- HERO SECTION with two image belts ---- */}
+      {/* ---- HERO SECTION WITH TWO IMAGE BELTS ---- */}
       <section className="relative flex flex-col items-center justify-center min-h-screen text-center px-4 py-20 overflow-hidden">
         {/* Top belt – moving right → left */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
           <motion.div 
             className="flex gap-6 absolute top-1/4 left-0"
-            style={{ x: topWrapped }}
+            style={{ x: topX }}
           >
             {[...beltImages, ...beltImages, ...beltImages].map((img, i) => (
               <div key={`top-${i}`} className="shrink-0 w-64 h-64 md:w-80 md:h-80 relative rounded-2xl overflow-hidden">
@@ -389,7 +383,7 @@ export default function Home() {
         <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
           <motion.div 
             className="flex gap-6 absolute bottom-1/4 left-0"
-            style={{ x: bottomWrapped }}
+            style={{ x: bottomX }}
           >
             {[...beltImages, ...beltImages, ...beltImages].map((img, i) => (
               <div key={`bottom-${i}`} className="shrink-0 w-64 h-64 md:w-80 md:h-80 relative rounded-2xl overflow-hidden">
@@ -399,13 +393,13 @@ export default function Home() {
           </motion.div>
         </div>
 
-        {/* Gradient overlays to fade edges */}
+        {/* Gradient overlays */}
         <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-background to-transparent pointer-events-none z-10" />
         <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-background to-transparent pointer-events-none z-10" />
         <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-background to-transparent pointer-events-none z-10" />
         <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background to-transparent pointer-events-none z-10" />
 
-        {/* Hero content (on top) */}
+        {/* Hero content */}
         <div className="relative z-20 max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 8 }}
@@ -480,7 +474,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ---- HOW IT WORKS (no background belt) ---- */}
+      {/* ---- HOW IT WORKS ---- */}
       <section className="relative py-24 px-4 bg-muted/30 overflow-hidden">
         <div className="relative z-10 max-w-6xl mx-auto">
           <motion.h2 
@@ -508,7 +502,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ---- LOVED BY FOUNDERS (testimonials, unchanged) ---- */}
+      {/* ---- LOVED BY FOUNDERS (testimonials) ---- */}
       <section className="py-24 px-4 overflow-hidden">
         <div className="max-w-6xl mx-auto">
           <motion.h2 
@@ -523,22 +517,10 @@ export default function Home() {
           
           <div className="relative group">
             <motion.div 
-              className="flex gap-6 testimonial-track"
-              style={{ x: wrappedX, width: "fit-content" }}
-              onHoverStart={() => {
-                animate(speed, 0, {
-                  duration: 0.4,
-                  ease: "easeOut"
-                });
-              }}
-              onHoverEnd={() => {
-                animate(speed, baseSpeed, {
-                  duration: 0.6,
-                  ease: "easeInOut"
-                });
-              }}
+              className="flex gap-6"
+              style={{ x: testX }}
             >
-              {[...testimonials, ...testimonials, ...testimonials].map((t, i) => (
+              {allTestimonials.map((t, i) => (
                 <Card key={i} className="min-w-[300px] md:min-w-[350px] bg-muted/50 border-none shrink-0">
                   <CardContent className="pt-6">
                     <p className="italic text-lg mb-6">"{t.content}"</p>
@@ -560,7 +542,7 @@ export default function Home() {
         </p>
       </div>
 
-      {/* ---- NEWSLETTER + FOOTER (unchanged) ---- */}
+      {/* ---- NEWSLETTER + FOOTER ---- */}
       <motion.section 
         initial={{ opacity: 0, filter: "blur(12px)", y: 24 }}
         whileInView={{ opacity: 1, filter: "blur(0px)", y: 0 }}
