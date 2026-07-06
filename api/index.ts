@@ -44,7 +44,7 @@ app.use((req, res, next) => {
 });
 
 // Register routes
-registerRoutes(null as any, app); // httpServer not needed
+registerRoutes(null as any, app);
 
 // Error handling middleware
 app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
@@ -58,4 +58,3 @@ app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
 });
 
 export default app;
-module.exports = app;
