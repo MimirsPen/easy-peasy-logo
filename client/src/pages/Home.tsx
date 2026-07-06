@@ -357,8 +357,8 @@ export default function Home() {
         <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-background to-transparent pointer-events-none z-10" />
         <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background to-transparent pointer-events-none z-10" />
 
-        {/* Hero content - with text shadow for readability */}
-        <div className="relative z-20 max-w-4xl mx-auto">
+        {/* Hero content - moved UP with -mt-16 */}
+        <div className="relative z-20 max-w-4xl mx-auto -mt-16">
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
