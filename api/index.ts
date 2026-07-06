@@ -1,18 +1,9 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import { serveStatic } from "../server/static";
-import { createServer } from "http";
 
 const app = express();
-const httpServer = createServer(app);
 
-declare module "http" {
-  interface IncomingMessage {
-    rawBody: unknown;
-  }
-}
-
-// 1. Logging and tracing first
+// Logging middleware
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -20,7 +11,6 @@ export function log(message: string, source = "express") {
     second: "2-digit",
     hour12: true,
   });
-
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
@@ -40,7 +30,6 @@ app.use((req, res, next) => {
   res.end = function (chunk?: any, encoding?: any, cb?: any) {
     const duration = Date.now() - start;
     console.log("RES", req.method, req.url, res.statusCode, res.getHeader("content-type") || "");
-    
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
@@ -54,58 +43,19 @@ app.use((req, res, next) => {
   next();
 });
 
-process.on("uncaughtException", (err) => {
-  console.error("[crash] Uncaught exception:", err);
-});
-
-process.on("unhandledRejection", (reason) => {
-  console.error("[crash] Unhandled promise rejection:", reason);
-});
-
-process.on("SIGTERM", () => {
-  console.log("SIGTERM RECEIVED");
-  process.exit(0);
-});
-
-process.on("SIGINT", () => {
-  console.log("SIGINT RECEIVED");
-  process.exit(0);
-});
-
-process.on("SIGHUP", () => {
-  console.log("SIGHUP RECEIVED");
-  process.exit(0);
-});
-
-setInterval(() => {
-  console.log("MEM", JSON.stringify(process.memoryUsage()));
-}, 5000);
-
-// ✅ Register routes – now synchronous (no await needed)
-registerRoutes(httpServer, app);
+// Register routes
+registerRoutes(null as any, app); // httpServer not needed
 
 // Error handling middleware
 app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
   const status = err.status || err.statusCode || 500;
   const message = err.message || "Internal Server Error";
-
   console.error("Internal Server Error:", err);
-
   if (res.headersSent) {
     return next(err);
   }
-
   return res.status(status).json({ message });
 });
 
-// Static files (production) or Vite (development)
-if (process.env.NODE_ENV === "production") {
-  serveStatic(app);
-} else {
-  const { setupVite } = await import("../server/vite");
-  await setupVite(httpServer, app);
-}
-
-// ✅ Export for Vercel (CommonJS) – this is what Vercel uses
 export default app;
 module.exports = app;
