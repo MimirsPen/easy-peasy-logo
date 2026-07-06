@@ -331,21 +331,21 @@ export default function Home() {
           >
             {Array(copies).fill(topImages).flat().map((img, i) => (
               <div key={`top-${i}`} className="shrink-0 w-64 h-64 md:w-80 md:h-80 relative rounded-2xl overflow-hidden">
-                <img src={img} alt="" className="w-full h-full object-contain blur opacity-50 brightness-75" />
+                <img src={img} alt="" className="w-full h-full object-contain blur opacity-50 brightness-[0.35]" />
               </div>
             ))}
           </motion.div>
         </div>
 
-        {/* Bottom belt (12-22) – moving left → right, adjusted down slightly */}
-        <div className="absolute bottom-[15%] left-0 right-0 h-1/2 overflow-hidden pointer-events-none z-0">
+        {/* Bottom belt (12-22) – moving left → right, back to bottom-[20%] */}
+        <div className="absolute bottom-[20%] left-0 right-0 h-1/2 overflow-hidden pointer-events-none z-0">
           <motion.div 
             className="flex gap-6 h-full items-end"
             style={{ x: bottomX }}
           >
             {Array(copies).fill(bottomImages).flat().map((img, i) => (
               <div key={`bottom-${i}`} className="shrink-0 w-64 h-64 md:w-80 md:h-80 relative rounded-2xl overflow-hidden">
-                <img src={img} alt="" className="w-full h-full object-contain blur opacity-50 brightness-75" />
+                <img src={img} alt="" className="w-full h-full object-contain blur opacity-50 brightness-[0.35]" />
               </div>
             ))}
           </motion.div>
@@ -357,33 +357,76 @@ export default function Home() {
         <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-background to-transparent pointer-events-none z-10" />
         <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background to-transparent pointer-events-none z-10" />
 
-        {/* Hero content */}
+        {/* Hero content - with text shadow for readability */}
         <div className="relative z-20 max-w-4xl mx-auto">
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-            <Badge variant="outline" className="group rounded-full px-4 py-1.5 border-primary/20 bg-primary/5 text-primary cursor-pointer transition-all duration-200 hover:bg-primary/15 hover:text-white hover:shadow-[0_0_16px_rgba(124,58,237,0.4)]" onClick={handleStartDesigning} data-testid="badge-ai-powered">
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <Badge
+              variant="outline"
+              className="group rounded-full px-4 py-1.5 border-primary/20 bg-primary/5 text-primary cursor-pointer transition-all duration-200 hover:bg-primary/15 hover:text-white hover:shadow-[0_0_16px_rgba(124,58,237,0.4)] [text-shadow:0_0_20px_rgba(0,0,0,0.9),0_0_40px_rgba(0,0,0,0.6)]"
+              onClick={handleStartDesigning}
+              data-testid="badge-ai-powered"
+            >
               <img src={logoIcon} alt="" className="w-8 h-8 mr-2 inline-block transition-all duration-200 drop-shadow-[0_0_6px_rgba(124,58,237,0.5)] group-hover:scale-105 group-hover:drop-shadow-[0_0_18px_rgba(255,255,255,0.8)] group-hover:brightness-150" />
               AI-Powered Brand Identity
             </Badge>
           </motion.div>
           
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-balance leading-[1.1] mt-6" data-testid="text-headline">
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-balance leading-[1.1] mt-6 [text-shadow:0_0_30px_rgba(0,0,0,0.9),0_0_60px_rgba(0,0,0,0.6)]" data-testid="text-headline">
             {heroLines.map((line, i) => (
-              <motion.span key={i} className={`block ${line.highlight ? "text-primary" : ""}`} initial={{ opacity: 0, x: line.dir === "left" ? -40 : 40 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: line.delay, ease: "easeOut" }}>
+              <motion.span
+                key={i}
+                className={`block ${line.highlight ? "text-primary" : ""}`}
+                initial={{ opacity: 0, x: line.dir === "left" ? -40 : 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: line.delay, ease: "easeOut" }}
+              >
                 {line.text}
               </motion.span>
             ))}
           </h1>
           
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, delay: 0.5 }}>
-            <Typewriter text="Work with an AI identity designer that thinks through your brand with you, refining direction, taste, and meaning." delay={0.6} className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto min-h-[3em] mt-4" />
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3, delay: 0.5 }}
+          >
+            <Typewriter
+              text="Work with an AI identity designer that thinks through your brand with you, refining direction, taste, and meaning."
+              delay={0.6}
+              className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto min-h-[3em] mt-4 [text-shadow:0_0_20px_rgba(0,0,0,0.9),0_0_40px_rgba(0,0,0,0.6)]"
+            />
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.6 }} className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-6">
-            <Button size="lg" onClick={handleStartDesigning} data-testid="button-start-designing" className="relative bg-gradient-to-r from-[#5B21B6] via-[#6D28D9] to-[#7C3AED] text-white font-bold hover:scale-105 transition-all duration-200 shadow-[0_0_22px_rgba(124,58,237,0.35)] hover:shadow-[0_0_22px_rgba(124,58,237,0.6)] active:scale-95 rounded-xl px-8 h-12 overflow-hidden group/btn">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.6 }}
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-6"
+          >
+            <Button 
+              size="lg" 
+              onClick={handleStartDesigning}
+              data-testid="button-start-designing"
+              className="relative bg-gradient-to-r from-[#5B21B6] via-[#6D28D9] to-[#7C3AED] text-white font-bold hover:scale-105 transition-all duration-200 shadow-[0_0_22px_rgba(124,58,237,0.35)] hover:shadow-[0_0_22px_rgba(124,58,237,0.6)] active:scale-95 rounded-xl px-8 h-12 overflow-hidden group/btn"
+            >
               <div className="absolute inset-0 opacity-0 group-hover/btn:opacity-100 transition-opacity duration-300 pointer-events-none">
-                <div className="absolute inset-[-100%] bg-[linear-gradient(90deg,transparent,rgba(140,100,255,0.6),transparent)] bg-[length:200%_100%] animate-[edgeMove_2.2s_linear_infinite]" style={{ maskImage: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', maskComposite: 'exclude', WebkitMaskComposite: 'destination-out', padding: '1px' }} />
+                <div 
+                  className="absolute inset-[-100%] bg-[linear-gradient(90deg,transparent,rgba(140,100,255,0.6),transparent)] bg-[length:200%_100%] animate-[edgeMove_2.2s_linear_infinite]"
+                  style={{
+                    maskImage: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                    maskComposite: 'exclude',
+                    WebkitMaskComposite: 'destination-out',
+                    padding: '1px'
+                  }}
+                />
               </div>
-              <span className="relative z-10 flex items-center">Start designing <ArrowRight className="ml-2 w-4 h-4" /></span>
+              <span className="relative z-10 flex items-center">
+                Start designing <ArrowRight className="ml-2 w-4 h-4" />
+              </span>
             </Button>
           </motion.div>
         </div>
