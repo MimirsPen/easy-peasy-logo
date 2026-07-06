@@ -337,8 +337,8 @@ export default function Home() {
           </motion.div>
         </div>
 
-        {/* Bottom belt (12-22) – moving left → right, moved UP to bring closer */}
-        <div className="absolute bottom-[20%] left-0 right-0 h-1/2 overflow-hidden pointer-events-none z-0">
+        {/* Bottom belt (12-22) – moving left → right, adjusted down slightly */}
+        <div className="absolute bottom-[15%] left-0 right-0 h-1/2 overflow-hidden pointer-events-none z-0">
           <motion.div 
             className="flex gap-6 h-full items-end"
             style={{ x: bottomX }}
