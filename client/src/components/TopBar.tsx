@@ -26,14 +26,11 @@ export default function TopBar({ creditButtonRef }: TopBarProps = {}) {
     setUser(null);
 
     // --- CLEAR GUEST SESSION DATA ---
-    // This ensures that after logout, the guest mode starts fresh
-    // without showing the previously authenticated user's project.
     localStorage.removeItem("easypeasy_session_id");
     localStorage.removeItem("easypeasy_session_project_id");
-    // Optionally, you could also clear the intro flag for the guest project,
-    // but that's not necessary – it will be recreated with the new project.
 
-    setLocation("/");
+    // Force a hard reload to reset all React state and contexts
+    window.location.href = "/";
   };
 
   const goHome = () => {
