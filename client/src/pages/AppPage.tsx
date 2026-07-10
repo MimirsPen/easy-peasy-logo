@@ -133,7 +133,6 @@ export default function AppPage() {
       inputRef.current?.focus();
     }, 0);
   }, []);
-  
 
   const sessionId = useRef(getSessionId()).current;
   const [introPlayed, setIntroPlayed] = useState(false);
@@ -1080,9 +1079,10 @@ export default function AppPage() {
       formData.append("message", messageText);
       formData.append("attachedImage", currentAttachments[0] || "");
       formData.append("imageUsage", currentAttachments[0] ? (activeImageUsage || "") : "");
-      if (currentRawFile) {
-        formData.append("image", currentRawFile);
-      }
+      // Removed the raw file append – n8n will fetch from the Cloudinary URL
+      // if (currentRawFile) {
+      //   formData.append("image", currentRawFile);
+      // }
 
       startLoadingTimer();
 
