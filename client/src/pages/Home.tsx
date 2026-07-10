@@ -278,8 +278,12 @@ export default function Home() {
   // Start in the middle of the second copy to avoid empty space
   const testX = useMotionValue(-totalTestimonialWidth / testCopies);
 
+  // ---- HOVER SLOWDOWN ----
+  const [testimonialSpeedMultiplier, setTestimonialSpeedMultiplier] = useState(1);
+
   useAnimationFrame((t, delta) => {
-    let newX = testX.get() - delta * testimonialSpeed;
+    const step = delta * testimonialSpeed * testimonialSpeedMultiplier;
+    let newX = testX.get() - step;
     // Reset when we've passed one full set
     if (newX < -totalTestimonialWidth * (testCopies - 1) / testCopies) {
       newX += totalTestimonialWidth / testCopies;
@@ -446,7 +450,11 @@ export default function Home() {
       <section className="py-24 px-4 overflow-hidden">
         <div className="max-w-6xl mx-auto">
           <motion.h2 initial={{ opacity: 0, x: -120 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.7, ease: "easeOut" }} className="text-3xl md:text-4xl font-bold text-center mb-16">Loved by founders</motion.h2>
-          <div className="relative group">
+          <div 
+            className="relative group"
+            onMouseEnter={() => setTestimonialSpeedMultiplier(0.2)}
+            onMouseLeave={() => setTestimonialSpeedMultiplier(1)}
+          >
             <motion.div className="flex gap-6" style={{ x: testX }}>
               {allTestimonials.map((t, i) => (
                 <Card key={i} className="min-w-[300px] md:min-w-[350px] bg-muted/50 border-none shrink-0">
