@@ -9,11 +9,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Mail, CheckCircle2, Circle, Eye, EyeOff } from "lucide-react";
+import { Loader2, Mail, CheckCircle2, Circle, Eye, EyeOff, X } from "lucide-react";
 import { SiGoogle } from "react-icons/si";
 
-export default function Auth(props: { embedded?: boolean; defaultMode?: 'login' | 'signup'; overrideTitle?: string; overrideSubtext?: string; [key: string]: any }) {
-  const { embedded = false, defaultMode, overrideTitle, overrideSubtext } = props;
+export default function Auth(props: {
+  embedded?: boolean;
+  defaultMode?: 'login' | 'signup';
+  overrideTitle?: string;
+  overrideSubtext?: string;
+  onClose?: () => void;
+  [key: string]: any;
+}) {
+  const { embedded = false, defaultMode, overrideTitle, overrideSubtext, onClose } = props;
   const [location, setLocation] = useLocation();
   const { setAuth } = useAuth();
   const { setUser } = useUser();
@@ -155,7 +162,15 @@ export default function Auth(props: { embedded?: boolean; defaultMode?: 'login' 
   if (mode === 'verify-email') {
     return (
       <div className={`flex items-center justify-center ${embedded ? '' : 'min-h-screen'} bg-background p-4`}>
-        <Card className="w-full max-w-[420px] border-none bg-muted/30 animate-fadeIn">
+        <Card className="w-full max-w-[420px] border-none bg-muted/30 animate-fadeIn relative">
+          {embedded && onClose && (
+            <button
+              onClick={onClose}
+              className="absolute top-2 right-2 text-white/50 hover:text-white transition-colors z-10"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
           <CardHeader className="text-center space-y-2">
             <CardTitle className="text-3xl font-bold tracking-tight">Check your email</CardTitle>
             <CardDescription>
@@ -182,7 +197,15 @@ export default function Auth(props: { embedded?: boolean; defaultMode?: 'login' 
 
   return (
     <div className={`flex items-center justify-center ${embedded ? '' : 'min-h-screen'} bg-background p-4`}>
-      <Card key={mode} className="w-full max-w-[420px] border-none bg-muted/30 animate-fadeIn">
+      <Card key={mode} className="w-full max-w-[420px] border-none bg-muted/30 animate-fadeIn relative">
+        {embedded && onClose && (
+          <button
+            onClick={onClose}
+            className="absolute top-2 right-2 text-white/50 hover:text-white transition-colors z-10"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
         <CardHeader className="text-center space-y-2">
           <CardTitle className="text-3xl font-bold tracking-tight">
             {mode === 'login' ? 'Welcome back' : (overrideTitle || 'Create account')}
