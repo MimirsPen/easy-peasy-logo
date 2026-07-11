@@ -69,10 +69,16 @@ const MAX_IMAGE_SIZE = 15 * 1024 * 1024;
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_PRESET = import.meta.env.VITE_CLOUDINARY_PRESET;
 
-async function uploadFileToCloudinary(file: File): Promise<string> {
+// UPDATED: add expires_at (2 minutes for testing)
+async function uploadFileToCloudinary(file: File, expiresInMinutes: number = 2): Promise<string> {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("upload_preset", CLOUDINARY_PRESET);
+
+  // Set expiry: current time + expiresInMinutes (in seconds since epoch)
+  const expiresAt = Math.floor((Date.now() + expiresInMinutes * 60 * 1000) / 1000);
+  formData.append("expires_at", expiresAt.toString());
+
   const res = await fetch(
     `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
     { method: "POST", body: formData }
