@@ -21,7 +21,7 @@ export default function Auth(props: {
   [key: string]: any;
 }) {
   const { embedded = false, defaultMode, overrideTitle, overrideSubtext, onClose } = props;
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const { setAuth } = useAuth();
   const { setUser } = useUser();
   
@@ -159,18 +159,39 @@ export default function Auth(props: {
     }
   };
 
+  // --- Helper to render close button ---
+  const renderCloseButton = () => {
+    if (embedded) {
+      if (onClose) {
+        return (
+          <button
+            onClick={onClose}
+            className="absolute top-2 right-2 text-white/50 hover:text-white transition-colors z-10"
+            aria-label="Close"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        );
+      }
+      return null;
+    }
+    // Standalone: go to home
+    return (
+      <button
+        onClick={() => setLocation("/")}
+        className="absolute top-2 right-2 text-white/50 hover:text-white transition-colors z-10"
+        aria-label="Close"
+      >
+        <X className="w-5 h-5" />
+      </button>
+    );
+  };
+
   if (mode === 'verify-email') {
     return (
       <div className={`flex items-center justify-center ${embedded ? '' : 'min-h-screen'} bg-background p-4`}>
         <Card className="w-full max-w-[420px] border-none bg-muted/30 animate-fadeIn relative">
-          {embedded && onClose && (
-            <button
-              onClick={onClose}
-              className="absolute top-2 right-2 text-white/50 hover:text-white transition-colors z-10"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          )}
+          {renderCloseButton()}
           <CardHeader className="text-center space-y-2">
             <CardTitle className="text-3xl font-bold tracking-tight">Check your email</CardTitle>
             <CardDescription>
@@ -198,14 +219,7 @@ export default function Auth(props: {
   return (
     <div className={`flex items-center justify-center ${embedded ? '' : 'min-h-screen'} bg-background p-4`}>
       <Card key={mode} className="w-full max-w-[420px] border-none bg-muted/30 animate-fadeIn relative">
-        {embedded && onClose && (
-          <button
-            onClick={onClose}
-            className="absolute top-2 right-2 text-white/50 hover:text-white transition-colors z-10"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        )}
+        {renderCloseButton()}
         <CardHeader className="text-center space-y-2">
           <CardTitle className="text-3xl font-bold tracking-tight">
             {mode === 'login' ? 'Welcome back' : (overrideTitle || 'Create account')}
