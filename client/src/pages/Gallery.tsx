@@ -10,30 +10,6 @@ import TopBar from "@/components/TopBar";
 import { motion } from "framer-motion";
 import { GeneratedImage } from "@/types";
 
-function ExpirationTimer({ expiresAt }: { expiresAt: string }) {
-  const msLeft = new Date(expiresAt).getTime() - Date.now();
-  const daysLeft = Math.ceil(msLeft / 86400000);
-
-  if (daysLeft <= 0) return null;
-
-  if (daysLeft <= 1) {
-    return (
-      <div className="mt-1 space-y-1">
-        <p className="text-xs font-semibold text-red-500">{daysLeft} Day Left</p>
-        <p className="text-[10px] text-red-400 leading-tight">
-          Download pictures now before deleted for security reasons
-        </p>
-      </div>
-    );
-  }
-
-  if (daysLeft <= 3) {
-    return <p className="mt-1 text-xs font-semibold text-yellow-400">{daysLeft} Days Left</p>;
-  }
-
-  return <p className="mt-1 text-xs text-muted-foreground">{daysLeft} Days Left</p>;
-}
-
 export default function Gallery() {
   const [, setLocation] = useLocation();
   const { state: authState } = useAuth();
@@ -158,7 +134,7 @@ export default function Gallery() {
                   {img.title && (
                     <p className="text-sm font-bold text-foreground truncate">{img.title}</p>
                   )}
-                  <ExpirationTimer expiresAt={img.expires_at} />
+                  {/* Expiration timer removed */}
                 </div>
               </motion.div>
             ))}
