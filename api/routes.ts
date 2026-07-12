@@ -52,7 +52,6 @@ export function registerRoutes(
 
         if (userId) {
           try {
-            // Always increment credits (for both payment and subscription modes)
             const { error: rpcError } = await supabaseAdmin.rpc("increment_credits", {
               uid: userId,
               amount: credits,
@@ -63,7 +62,6 @@ export function registerRoutes(
               return res.status(500).json({ error: "Failed to update credits" });
             }
 
-            // If this is a subscription purchase, save subscription data
             if (mode === "subscription" && session.customer && session.subscription) {
               console.log("Saving subscription data - customer:", session.customer, "subscription:", session.subscription);
 
@@ -143,12 +141,10 @@ export function registerRoutes(
         return res.status(500).json({ error: "VITE_API_BASE_URL is not configured" });
       }
 
-      // Log request details
       console.log("[proxy] generate-logo request received");
       console.log("[proxy] Content-Type:", req.headers["content-type"]);
       console.log("[proxy] Query:", req.query);
 
-      // Collect the raw stream — express.json() does not consume multipart bodies
       const chunks: Buffer[] = [];
       for await (const chunk of req) {
         chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
@@ -156,7 +152,6 @@ export function registerRoutes(
       const rawBody = Buffer.concat(chunks);
       console.log("[proxy] Raw body size:", rawBody.length);
 
-      // Forward to n8n preserving the multipart boundary in Content-Type
       const upstream = await fetch(apiUrl, {
         method: "POST",
         headers: {
@@ -197,18 +192,15 @@ export function registerRoutes(
         return res.status(400).json({ error: "Missing projectId" });
       }
 
-      // If there are concept URLs → save to logo_gallery
       if (concept_1_url || concept_2_url) {
         console.log("[chat-callback] Saving to logo_gallery...");
         
-        // Get user_id from project
         const { data: projectRow } = await supabaseAdmin
           .from("projects")
           .select("user_id")
           .eq("project_id", projectId)
           .single();
 
-        // Save to logo_gallery
         const { error: insertError } = await supabaseAdmin.from("logo_gallery").insert({
           user_id: projectRow?.user_id ?? null,
           project_id: projectId,
@@ -227,11 +219,9 @@ export function registerRoutes(
         return res.json({ success: true, type: "logo" });
       }
 
-      // If there's text → save to chat_messages
       if (text) {
         console.log("[chat-callback] Saving to chat_messages...");
         
-        // Save to chat_messages
         const { error: insertError } = await supabaseAdmin
           .from("chat_messages")
           .insert({
@@ -250,7 +240,6 @@ export function registerRoutes(
         return res.json({ success: true, type: "chat" });
       }
 
-      // If neither text nor concept URLs → error
       console.warn("[chat-callback] No data to save");
       res.status(400).json({ error: "No data to save" });
 
@@ -271,7 +260,6 @@ export function registerRoutes(
         return res.json({ received: true, delivered: false, reason: "missing_projectId" });
       }
 
-      // Persist to logo_gallery — look up user_id via project
       try {
         const { data: projectRow } = await supabaseAdmin
           .from("projects")
@@ -286,11 +274,11 @@ export function registerRoutes(
           concept_1_url: concept_1_url || null,
           concept_2_title: concept_2_title || null,
           concept_2_url: concept_2_url || null,
+          response_text: response || null, // 👈 ADDED THIS
         });
         if (insertError) console.error("[callback] logo_gallery insert error:", insertError.message);
         else console.log(`[callback] saved to logo_gallery pid=${projectId}`);
 
-        // Deduct 10 credits from user_credits
         try {
           const { data: creditRow } = await supabaseAdmin
             .from("user_credits")
@@ -320,7 +308,6 @@ export function registerRoutes(
         console.error("[callback] logo_gallery save failed:", dbErr.message);
       }
 
-      // Update generation_status to "completed" so Realtime can notify the frontend
       console.log(`[callback] Setting generation_status to "completed" for project ${projectId}`);
       const { error: statusError } = await supabaseAdmin
         .from("projects")
