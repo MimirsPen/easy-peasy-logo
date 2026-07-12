@@ -69,16 +69,12 @@ const MAX_IMAGE_SIZE = 15 * 1024 * 1024;
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_PRESET = import.meta.env.VITE_CLOUDINARY_PRESET;
 
-// UPDATED: add expires_at (2 minutes for testing)
 async function uploadFileToCloudinary(file: File, expiresInMinutes: number = 2): Promise<string> {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("upload_preset", CLOUDINARY_PRESET);
-
-  // Set expiry: current time + expiresInMinutes (in seconds since epoch)
   const expiresAt = Math.floor((Date.now() + expiresInMinutes * 60 * 1000) / 1000);
   formData.append("expires_at", expiresAt.toString());
-
   const res = await fetch(
     `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
     { method: "POST", body: formData }
@@ -104,18 +100,14 @@ function getInitials(user: any): string {
     const parts = user.name.trim().split(" ");
     return parts.slice(0, 2).map((p: string) => p[0]).join("").toUpperCase();
   }
-
   if (user?.email) {
     const prefix = user.email.split("@")[0];
     const parts = prefix.split(/[._-]/);
-
     if (parts.length > 1) {
       return parts.slice(0, 2).map((p: string) => p[0]).join("").toUpperCase();
     }
-
     return prefix[0].toUpperCase();
   }
-
   return "U";
 }
 
@@ -130,11 +122,9 @@ export default function AppPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const genTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeGenerationProjectIdRef = useRef<string | null>(null);
-  // Realtime channel ref for cleanup
   const realtimeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
-    // Initial focus on load
     setTimeout(() => {
       inputRef.current?.focus();
     }, 0);
@@ -247,12 +237,10 @@ export default function AppPage() {
     if (!authState.loading && !authState.isAuthenticated) {
       const STORAGE_KEY = "easypeasy_session_project_id";
       let sessionId = localStorage.getItem(STORAGE_KEY);
-      
       if (!sessionId) {
         sessionId = crypto.randomUUID();
         localStorage.setItem(STORAGE_KEY, sessionId);
       }
-
       const defaultProj = {
         project_id: sessionId,
         name: "First Brand Design",
@@ -260,7 +248,6 @@ export default function AppPage() {
         created_at: new Date().toISOString(),
         isActive: true
       };
-
       setProject(defaultProj);
       setProjectList([{ id: sessionId, name: defaultProj.name }]);
     }
@@ -270,26 +257,20 @@ export default function AppPage() {
     if (!authState.loading && !authState.isAuthenticated) {
       const sessionProjectId = localStorage.getItem("easypeasy_session_project_id");
       if (!sessionProjectId) return;
-
       const introKey = `easypeasy_intro_played_${sessionProjectId}`;
       if (localStorage.getItem(introKey) === "true") {
         setIntroPlayed(true);
       }
-
       if (chatState.messages.length === 0 && !introPlayed && !introRunning) {
         const runIntro = async () => {
           setIntroRunning(true);
           await new Promise(resolve => setTimeout(resolve, 500));
-          
           const typeText = async (text: string) => {
             setShowIntroTyping(true);
             await new Promise(resolve => setTimeout(resolve, 900));
             setShowIntroTyping(false);
-
             const projectId = getProjectId();
             const msgId = crypto.randomUUID();
-            
-            // Insert empty assistant bubble
             addMessage({
               chat_message_id: msgId,
               project_id: projectId,
@@ -297,8 +278,6 @@ export default function AppPage() {
               content: "",
               created_at: new Date().toISOString()
             });
-
-            // Animate multiple characters per update (ChatGPT-style)
             const chunkSize = 3;
             for (let i = chunkSize; i <= text.length + (chunkSize - 1); i += chunkSize) {
               await new Promise(resolve => setTimeout(resolve, 30));
@@ -306,11 +285,9 @@ export default function AppPage() {
               updateMessage(msgId, currentText);
             }
           };
-
           await typeText("Hi! I'm your brand identity designer.\nI help align your visual identity so your brand builds trust and attracts the right clients.");
           await new Promise(resolve => setTimeout(resolve, 600));
           await typeText("Tell me a bit about your brand or the idea you're exploring. 🙂");
-          
           localStorage.setItem(introKey, "true");
           setIntroPlayed(true);
           setIntroRunning(false);
@@ -342,37 +319,31 @@ export default function AppPage() {
 
   const handleRenameProject = async () => {
     if (!renameProject) return;
-
     if (!authState.isAuthenticated) {
       setRenameProject(null);
       openAuthModal();
       return;
     }
-
     try {
       const { error } = await supabase
         .from("projects")
         .update({ name: renameValue.trim() })
         .eq("project_id", renameProject.id);
-
       if (error) {
         console.error("Rename project failed:", error);
         return;
       }
-
       setProjectList(prev =>
         prev.map(p =>
           p.id === renameProject.id ? { ...p, name: renameValue.trim() } : p
         )
       );
-
       if (projectState.activeProject?.project_id === renameProject.id) {
         setProject({
           ...projectState.activeProject,
           name: renameValue.trim()
         });
       }
-
       setRenameProject(null);
     } catch (err) {
       console.error("Unexpected rename error:", err);
@@ -381,25 +352,21 @@ export default function AppPage() {
 
   const confirmDeleteProject = async () => {
     if (!deleteProject) return;
-
     if (!authState.isAuthenticated) {
       setDeleteProject(null);
       openAuthModal();
       return;
     }
-
     try {
       const { error } = await supabase
         .from("projects")
         .delete()
         .eq("project_id", deleteProject.id);
-
       if (!error) {
         setProjectList(prev => prev.filter(p => p.id !== deleteProject.id));
         if (projectState.activeProject?.project_id === deleteProject.id) {
           setProject(null);
           setMessages([]);
-          // Clear all generation/loading state so the input doesn't stay locked
           setStatus('idle');
           stopLoadingTimer();
           setSendingProjects({});
@@ -453,25 +420,19 @@ export default function AppPage() {
 
   useEffect(() => {
     if (!authState.isAuthenticated || !userState.user) return;
-    
     const guestSessionId = localStorage.getItem("easypeasy_session_id");
     const guestProjectId = localStorage.getItem("easypeasy_session_project_id");
     if (!guestSessionId && !guestProjectId) return;
-
     const promoteGuestProject = async () => {
       try {
-        // Check if user already has projects
         const { data: existingProjects, error: checkError } = await supabase
           .from("projects")
           .select("project_id")
           .eq("user_id", userState.user.user_id);
-
         if (checkError) {
           console.error("Failed to check existing projects:", checkError);
           return;
         }
-
-        // If user already has projects, clean up and return
         if (existingProjects && existingProjects.length > 0) {
           localStorage.removeItem("easypeasy_session_id");
           if (guestProjectId) {
@@ -480,7 +441,6 @@ export default function AppPage() {
           }
           return;
         }
-
         let project = null;
         if (guestProjectId) {
           const { data: guestProject, error: projectFetchError } = await supabase
@@ -488,12 +448,10 @@ export default function AppPage() {
             .select("*")
             .eq("project_id", guestProjectId)
             .maybeSingle();
-
           if (projectFetchError) {
             console.error("Failed to fetch guest project:", projectFetchError);
             return;
           }
-
           if (guestProject) {
             const { error: transferError } = await supabase
               .from("projects")
@@ -502,12 +460,10 @@ export default function AppPage() {
                 is_system_default: true
               })
               .eq("project_id", guestProjectId);
-
             if (transferError) {
               console.error("Failed to transfer guest project:", transferError);
               return;
             }
-
             project = {
               ...guestProject,
               user_id: userState.user.user_id,
@@ -515,7 +471,6 @@ export default function AppPage() {
             };
           }
         }
-
         if (!project) {
           const { data: createdProject, error: createError } = await supabase
             .from("projects")
@@ -526,22 +481,18 @@ export default function AppPage() {
             })
             .select()
             .single();
-
           if (createError) {
             console.error("Failed to create promoted project:", createError);
             return;
           }
-
           project = createdProject;
         }
-
         if (guestSessionId) {
           const { data: guestMessages, error: fetchError } = await supabase
             .from("guest_messages")
             .select("*")
             .eq("guest_session_id", guestSessionId)
             .order("created_at", { ascending: true });
-
           if (fetchError) {
             console.error("Failed to fetch guest messages:", fetchError);
           } else if (guestMessages && guestMessages.length > 0 && project) {
@@ -551,17 +502,14 @@ export default function AppPage() {
               content: m.content,
               created_at: m.created_at
             }));
-
             const { error: insertError } = await supabase
               .from("chat_messages")
               .insert(messagesToInsert);
-
             if (insertError) {
               console.error("Failed to migrate guest messages:", insertError);
             }
           }
         }
-
         if (project) {
           setProject({
             project_id: project.project_id,
@@ -572,7 +520,6 @@ export default function AppPage() {
           });
           setProjectList([{ id: project.project_id, name: project.name || "First Brand Design" }]);
         }
-
         if (guestSessionId) {
           await supabase
             .from("guest_sessions")
@@ -587,7 +534,6 @@ export default function AppPage() {
         console.error("Guest project promotion failed:", err);
       }
     };
-
     promoteGuestProject();
   }, [authState.isAuthenticated, userState.user?.user_id]);
 
@@ -602,7 +548,6 @@ export default function AppPage() {
         .select("*")
         .eq("project_id", projectId)
         .order("created_at", { ascending: true });
-
       if (error) {
         console.error("Error loading messages:", error);
         return [];
@@ -674,7 +619,8 @@ export default function AppPage() {
               chat_message_id: row.id ? `gallery-${row.id}` : crypto.randomUUID(),
               project_id: projectId,
               sender: "designer",
-              content: "",
+              // 👇 USE response_text FROM THE ROW
+              content: row.response_text || "Here are your concepts.",
               created_at: row.created_at || new Date().toISOString(),
               concept_1_url: row.concept_1_url || undefined,
               concept_1_title: row.concept_1_title || undefined,
@@ -694,22 +640,18 @@ export default function AppPage() {
       const isGenerating = projectRowResult.data?.generation_status === "generating";
 
       if (isGenerating && !options?.skipMessages) {
-        // Restore the premium loading divider layout
         setSendingProjects(prev => ({ ...prev, [projectId]: true }));
         setStatus('running');
         addSystemMessage("Creating concepts...");
       } else if (isGenerating && options?.skipMessages) {
-        // Polling tick: just keep the dots alive (this branch will be removed)
         setSendingProjects(prev => ({ ...prev, [projectId]: true }));
         setStatus('running');
       } else if (!isGenerating && !options?.skipMessages) {
-        // Done: clear the loading dots on the initial load
         setSendingProjects(prev => { const n = { ...prev }; delete n[projectId]; return n; });
         setStatus('idle');
       }
 
       if (!options?.skipScroll) {
-        // Snap to bottom after messages have rendered
         setTimeout(() => {
           const viewport = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]');
           if (viewport) {
@@ -722,7 +664,6 @@ export default function AppPage() {
     };
 
     // --- Supabase Realtime subscription for generation status ---
-    // Clean up any previous channel
     if (realtimeChannelRef.current) {
       supabase.removeChannel(realtimeChannelRef.current);
       realtimeChannelRef.current = null;
@@ -741,12 +682,9 @@ export default function AppPage() {
         (payload) => {
           if (payload.new.generation_status === 'completed') {
             console.log('[Realtime] Generation completed for project', projectId);
-            // Stop loading state
             setStatus('idle');
             stopLoadingTimer();
             setSendingProjects(prev => { const n = { ...prev }; delete n[projectId]; return n; });
-            
-            // Reload full history to show new logos and messages
             loadHistory({ skipScroll: false });
           }
         }
@@ -782,10 +720,8 @@ export default function AppPage() {
       created_at: new Date().toISOString(),
       isActive: true
     });
-
     setSearch("");
     setIsSearchOpen(false);
-
     requestAnimationFrame(() => {
       const el = document.getElementById(`project-${proj.id}`);
       if (el) {
@@ -804,16 +740,12 @@ export default function AppPage() {
       setProjectError("Maximum 60 characters.");
       return;
     }
-
     if (!authState.isAuthenticated) {
       requireAuth("new_project");
       return;
     }
-
     setIsCreatingProject(true);
-    // Simulate slight delay for spinner visibility as requested
     await new Promise(resolve => setTimeout(resolve, 600));
-
     try {
       const { data, error } = await supabase
         .from("projects")
@@ -824,22 +756,20 @@ export default function AppPage() {
         }])
         .select()
         .single();
-
       if (error || !data) {
         setProjectError("Failed to create project.");
         setIsCreatingProject(false);
         return;
       }
-
-    const id = data.project_id;
-    setProject({
-      project_id: id,
-      user_id: userState.user?.user_id || 'anonymous',
-      name: trimmedName,
-      created_at: data.created_at,
-      isActive: true
-    });
-    setProjectList(prev => [...prev, { id, name: trimmedName }]);
+      const id = data.project_id;
+      setProject({
+        project_id: id,
+        user_id: userState.user?.user_id || 'anonymous',
+        name: trimmedName,
+        created_at: data.created_at,
+        isActive: true
+      });
+      setProjectList(prev => [...prev, { id, name: trimmedName }]);
       setMessages([]);
       setProjectModalOpen(false);
       setNewProjectName("");
@@ -858,18 +788,14 @@ export default function AppPage() {
           .from("projects")
           .select("*")
           .order("created_at", { ascending: true });
-
         if (!error && data) {
           const list = data.map(p => ({
             id: p.project_id,
             name: p.name
           }));
-          // Prevent stale queries from overwriting recently created projects
-          // Only update if new results have items, or if current list is empty
           if (list.length > 0 || projectList.length === 0) {
             setProjectList(list);
           }
-
           if (!projectState.activeProject && list.length > 0) {
             const first = data[0];
             setProject({
@@ -934,39 +860,29 @@ export default function AppPage() {
 
   const onSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    
     const MESSAGE_LIMIT_KEY = getMessageLimitKey();
     const freeCount = Number(localStorage.getItem(MESSAGE_LIMIT_KEY) || 0);
     const FREE_LIMIT = 10;
-
     if (!authState.isAuthenticated) {
       if (freeCount >= FREE_LIMIT) {
         requireAuth("limit");
         return;
       }
     }
-
     const currentCredits = creditsState.credits ?? 0;
     if (authState.isAuthenticated && currentCredits <= 0) {
       setShowNoCreditsModal(true);
       return;
     }
-
     if (!input.trim() || isSendLocked) return;
-
     setSendingProjects(prev => ({ ...prev, [currentActiveId]: true }));
-
-    // For authenticated users, only use real Supabase project state (no guest localStorage fallback)
-    // For unauthenticated users, use the guest project from localStorage
     let projectId = authState.isAuthenticated
       ? (projectState.activeProject?.project_id ?? null)
       : getProjectId();
-
     if (!projectId && authState.isAuthenticated && userState.user) {
       setProjectModalOpen(false);
       setProjectError(null);
       setIsCreatingProject(true);
-
       const { data, error } = await supabase
         .from("projects")
         .insert([
@@ -978,16 +894,13 @@ export default function AppPage() {
         ])
         .select()
         .single();
-
       if (error) {
         console.error("Failed to create default project:", error);
         if (projectId) setSendingProjects(prev => { const n = {...prev}; delete n[projectId!]; return n; });
         setIsCreatingProject(false);
         return;
       }
-
       projectId = data.project_id;
-
       setProjectList(prev => [
         ...prev,
         {
@@ -995,7 +908,6 @@ export default function AppPage() {
           name: data.name
         }
       ]);
-
       setProject({
         project_id: data.project_id,
         user_id: userState.user?.user_id ?? "anonymous",
@@ -1003,21 +915,13 @@ export default function AppPage() {
         created_at: data.created_at,
         isActive: true
       });
-
-      // Keep the thinking indicator alive after the re-render that assigns
-      // the new project ID to currentActiveId. Without this, isSending flips
-      // to false the moment setProject() triggers a re-render because
-      // sendingProjects only had the old empty-string key.
       setSendingProjects(prev => ({ ...prev, [data.project_id]: true }));
-
       setIsCreatingProject(false);
     }
-
     if (!projectId) {
       setSendingProjects(prev => { const n = {...prev}; delete n[currentActiveId]; return n; });
       return;
     }
-
     const userMsg: ChatMessage = {
       chat_message_id: crypto.randomUUID(),
       project_id: projectId,
@@ -1025,21 +929,16 @@ export default function AppPage() {
       content: input,
       created_at: new Date().toISOString()
     };
-
     const currentAttachments = [...attachedImageUrls];
     const currentRawFile = attachedRawFile;
     const messageText = input;
-
     addMessage({
       ...userMsg,
       ...(currentAttachments.length > 0 ? { references: currentAttachments } : {})
     } as ChatMessage & { references?: string[] });
-
     try {
       const sessionId = localStorage.getItem("easypeasy_session_id");
-
       if (authState?.isAuthenticated && projectId) {
-        // Authenticated user: save to project chat
         await supabase
           .from("chat_messages")
           .insert({
@@ -1048,7 +947,6 @@ export default function AppPage() {
             content: messageText
           });
       } else if (sessionId) {
-        // Guest user: save to guest_messages
         await supabase
           .from("guest_messages")
           .insert({
@@ -1060,20 +958,15 @@ export default function AppPage() {
     } catch (err) {
       console.error("Failed to persist user message:", err);
     }
-
     if (!authState.isAuthenticated) {
       localStorage.setItem(MESSAGE_LIMIT_KEY, String(freeCount + 1));
     }
-
     setInput("");
     setAttachedImageUrls([]);
     setAttachedRawFile(null);
     setActiveImageUsage(null);
     setGenError(null);
-
-    // Flag set to true when n8n returns "generation_started" — the Realtime handler takes over cleanup
     let handedOffToRealtime = false;
-
     try {
       const resolvedProjectId = projectState.activeProject?.project_id || projectId || "";
       const formData = new FormData();
@@ -1086,23 +979,15 @@ export default function AppPage() {
       formData.append("attachedImage", currentAttachments[0] || "");
       formData.append("imageUsage", currentAttachments[0] ? (activeImageUsage || "") : "");
       // Removed the raw file append – n8n will fetch from the Cloudinary URL
-      // if (currentRawFile) {
-      //   formData.append("image", currentRawFile);
-      // }
-
       startLoadingTimer();
-
       const fetchUrl = `/api/generate-logo?sessionId=${encodeURIComponent(sessionId ?? "")}&projectId=${encodeURIComponent(resolvedProjectId)}`;
-
       const res = await fetch(fetchUrl, {
         method: "POST",
         body: formData
       });
-
       if (!res.ok) {
         throw new Error(`Server error: ${res.status}`);
       }
-
       const data: {
         text: string;
         status?: "reply" | "starting_generation" | "generation_started" | "generation_complete";
@@ -1114,14 +999,11 @@ export default function AppPage() {
         concept_2_title?: string;
         concept_2_url?: string;
       } = await res.json();
-
-      // --- Async generation via Realtime (no WebSocket) ---
       if (data.status === "generation_started" || data.status === "starting_generation") {
         handedOffToRealtime = true;
         activeGenerationProjectIdRef.current = projectId;
         setStatus("running");
         addSystemMessage("Creating concepts...");
-
         if (genTimeoutRef.current) clearTimeout(genTimeoutRef.current);
         genTimeoutRef.current = setTimeout(() => {
           setGenError("Generation timed out. Please try again.");
@@ -1132,11 +1014,9 @@ export default function AppPage() {
           activeGenerationProjectIdRef.current = null;
           genTimeoutRef.current = null;
           setTimeout(() => inputRef.current?.focus(), 0);
-        }, 300_000); // 5-minute safety net
-
-        return; // Realtime handler will take over when generation_status becomes "completed"
+        }, 300_000);
+        return;
       }
-
       if (data.trigger_modal === "signup_required") {
         const assistantMsg: ChatMessage = {
           chat_message_id: crypto.randomUUID(),
@@ -1150,7 +1030,6 @@ export default function AppPage() {
         setAuthModalOpen(true);
         return;
       }
-
       const assistantMsg: ChatMessage = {
         chat_message_id: crypto.randomUUID(),
         project_id: projectId,
@@ -1159,12 +1038,9 @@ export default function AppPage() {
         created_at: new Date().toISOString()
       };
       addMessage(assistantMsg);
-
       try {
         const sessionId = localStorage.getItem("easypeasy_session_id");
-
         if (authState?.isAuthenticated && projectId) {
-          // Authenticated user: save to project chat
           await supabase
             .from("chat_messages")
             .insert({
@@ -1173,7 +1049,6 @@ export default function AppPage() {
               content: data.text
             });
         } else if (sessionId) {
-          // Guest user: save to guest_messages
           await supabase
             .from("guest_messages")
             .insert({
@@ -1185,16 +1060,12 @@ export default function AppPage() {
       } catch (err) {
         console.error("Failed to persist assistant message:", err);
       }
-
       const hasConceptUrls = data.concept_1_url || data.concept_2_url;
       const hasLegacyImages = data.status === "generation_complete" && data.images && data.images.length > 0;
-
       if (hasConceptUrls || hasLegacyImages) {
         setStatus('idle');
         stopLoadingTimer();
-
         let newImages: GeneratedImage[] = [];
-
         if (hasConceptUrls) {
           const conceptPairs: { url: string; title: string }[] = [];
           if (data.concept_1_url) conceptPairs.push({ url: data.concept_1_url, title: data.concept_1_title || "Concept 1" });
@@ -1216,7 +1087,6 @@ export default function AppPage() {
             expires_at: new Date(Date.now() + 30 * 86400000).toISOString()
           }));
         }
-
         if (newImages.length > 0) {
           addImages(newImages);
           setViewerImages(newImages);
@@ -1225,16 +1095,12 @@ export default function AppPage() {
           setArchiveOpen(false);
         }
       }
-
       if (data.creditsRemaining !== undefined) {
         setCredits(data.creditsRemaining);
       }
-
     } catch (err: any) {
       const wasGenerating = isGenerating || isSending;
       if (wasGenerating) {
-        // Network/proxy drop while n8n was still running — keep the loading
-        // state alive so the user isn't hard-kicked. Only show a soft warning.
         console.warn("Connection dropped mid-generation:", err?.message);
       } else {
         setGenError("Failed to reach designer. Please try again.");
@@ -1242,7 +1108,6 @@ export default function AppPage() {
         stopLoadingTimer();
       }
     } finally {
-      // When handedOffToRealtime is true, the Realtime handler owns cleanup — skip here.
       if (!handedOffToRealtime) {
         if (projectId) setSendingProjects(prev => { const n = {...prev}; delete n[projectId!]; return n; });
         setTimeout(() => inputRef.current?.focus(), 0);
@@ -1253,25 +1118,20 @@ export default function AppPage() {
   const onFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setUploadError(null);
-
     const validTypes = ['image/jpeg', 'image/png', 'image/jpg'];
     if (!validTypes.includes(file.type)) {
       setUploadError("Invalid file type. Only PNG and JPG are allowed.");
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
-
     if (file.size > MAX_IMAGE_SIZE) {
       setUploadError("File is too large. Max size is 15MB.");
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
-
     if (fileInputRef.current) fileInputRef.current.value = "";
     const intent = pendingIntentRef.current;
-
     setAttachedRawFile(file);
     setIsCloudinaryUploading(true);
     try {
@@ -1321,15 +1181,12 @@ export default function AppPage() {
     const imageRegex = /https?:\/\/\S+\.(jpg|jpeg|png|webp)(?:\?\S*)?/gi;
     const inlineUrls = msg.content.match(imageRegex) || [];
     const textContent = msg.content.replace(imageRegex, '').trim();
-
-    // Prefer structured concept fields; fall back to URLs scraped from content
     const conceptPairs: { url: string; title: string }[] = [];
     if (msg.concept_1_url) conceptPairs.push({ url: msg.concept_1_url, title: msg.concept_1_title || "Concept 1" });
     if (msg.concept_2_url) conceptPairs.push({ url: msg.concept_2_url, title: msg.concept_2_title || "Concept 2" });
     const displayPairs = conceptPairs.length > 0
       ? conceptPairs
       : inlineUrls.map((url, i) => ({ url, title: `Concept ${i + 1}` }));
-
     return (
       <div>
         {textContent.length > 0 && (
@@ -1385,7 +1242,6 @@ export default function AppPage() {
         <TopBar
           creditButtonRef={creditButtonRef}
         />
-
       </motion.div>
 
       <motion.main 
@@ -1415,157 +1271,154 @@ export default function AppPage() {
           ) : (
             <>
               <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-            <div className="max-w-3xl mx-auto space-y-6 py-4">
-              <AnimatePresence initial={false}>
-                {chatState.messages.map((msg) => (
+                <div className="max-w-3xl mx-auto space-y-6 py-4">
+                  <AnimatePresence initial={false}>
+                    {chatState.messages.map((msg) => (
+                      <motion.div
+                        key={msg.chat_message_id}
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        className={`flex ${msg.sender === 'system' ? 'justify-center' : msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                        data-testid={`chat-message-${msg.sender}`}
+                      >
+                        {msg.sender === 'system' ? (
+                          <div className="flex items-center gap-3 w-full max-w-md">
+                            <span className="flex-1 h-px bg-border/40" />
+                            <p className="text-[11px] text-muted-foreground/60 italic whitespace-nowrap">{msg.content}</p>
+                            <span className="flex-1 h-px bg-border/40" />
+                          </div>
+                        ) : msg.sender === 'user' ? (
+                          <div className="max-w-[85%] rounded-2xl p-4 shadow-sm bg-primary text-primary-foreground rounded-tr-none">
+                            {renderMessageContent(msg as ChatMessage & { references?: string[] })}
+                          </div>
+                        ) : (
+                          <div className="max-w-[85%] rounded-2xl p-4 shadow-sm bg-muted/80 text-foreground rounded-tl-none border border-border/50">
+                            {renderDesignerContent(msg)}
+                          </div>
+                        )}
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                  {(isGenerating || isSending || showIntroTyping) && (
+                    <div className="flex justify-start">
+                      <div className="bg-muted/80 rounded-2xl rounded-tl-none p-4 flex items-center gap-3 border border-border/50">
+                        <div className="flex items-center gap-1.5 px-1 py-1">
+                          <style>{`
+                            .thinking-dot {
+                              width: 6px;
+                              height: 6px;
+                              border-radius: 999px;
+                              background: currentColor;
+                              opacity: 0.6;
+                              animation: thinkingWave 1.2s infinite ease-in-out;
+                            }
+                            .thinking-dot:nth-child(2) { animation-delay: 0.2s; }
+                            .thinking-dot:nth-child(3) { animation-delay: 0.4s; }
+                            @keyframes thinkingWave {
+                              0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+                              40% { transform: scale(1); opacity: 1; }
+                            }
+                            .arrow-thinking {
+                              animation: arrowPulseRotate 1.2s infinite ease-in-out;
+                            }
+                            @keyframes arrowPulseRotate {
+                              0% { transform: rotate(0deg) scale(1); opacity: 0.8; }
+                              50% { transform: rotate(15deg) scale(1.1); opacity: 1; }
+                              100% { transform: rotate(0deg) scale(1); opacity: 0.8; }
+                            }
+                          `}</style>
+                          <span className="thinking-dot text-primary"></span>
+                          <span className="thinking-dot text-primary"></span>
+                          <span className="thinking-dot text-primary"></span>
+                        </div>
+                        {(() => {
+                          const txt = (isSending || isGenerating) ? getLoadingStatusText(loadingSeconds) : null;
+                          return txt ? (
+                            <span className="text-xs text-muted-foreground/70 italic select-none">{txt}</span>
+                          ) : null;
+                        })()}
+                      </div>
+                    </div>
+                  )}
+                  {genError && (
+                    <div className="flex justify-start">
+                      <div className="bg-destructive/10 text-destructive rounded-2xl rounded-tl-none p-4 border border-destructive/20" data-testid="text-gen-error">
+                        <p className="text-sm">{genError}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+
+              <AnimatePresence>
+                {isLimitReached && (
                   <motion.div
-                    key={msg.chat_message_id}
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    className={`flex ${msg.sender === 'system' ? 'justify-center' : msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                    data-testid={`chat-message-${msg.sender}`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="mx-auto max-w-[640px] w-full px-4 mb-4"
                   >
-                    {msg.sender === 'system' ? (
-                      <div className="flex items-center gap-3 w-full max-w-md">
-                        <span className="flex-1 h-px bg-border/40" />
-                        <p className="text-[11px] text-muted-foreground/60 italic whitespace-nowrap">{msg.content}</p>
-                        <span className="flex-1 h-px bg-border/40" />
+                    <Card className="border-white/10 bg-black/40 backdrop-blur-xl p-6 py-6 relative overflow-hidden group shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+                      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
+                      <div className="relative z-10 flex flex-col items-center text-center space-y-3">
+                        <img
+                          src={logoIcon}
+                          alt=""
+                          className="h-10 w-10 transition-all duration-300 drop-shadow-[0_0_8px_rgba(124,58,237,0.4)] group-hover:scale-110 group-hover:drop-shadow-[0_0_15px_rgba(255,255,255,0.6)] group-hover:brightness-125"
+                        />
+                        <div className="space-y-1.5">
+                          <h3 className="text-sm font-bold text-white tracking-tight">
+                            You've reached your complimentary design session.
+                          </h3>
+                          <p className="text-xs text-white/50 leading-relaxed max-w-[280px] mx-auto pb-1">
+                            Create your account to continue shaping your brand identity.
+                          </p>
+                        </div>
+                        <div className="flex flex-col w-full gap-2 pt-1">
+                          <Button
+                            onClick={openAuthModal}
+                            className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-10 text-xs shadow-[0_0_15px_rgba(124,58,237,0.3)] transition-all hover:scale-[1.02] active:scale-[0.98] relative overflow-hidden upgrade-button-glow"
+                          >
+                            Continue My Brand Journey
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            onClick={() => setIsLimitReached(false)}
+                            className="w-full text-white/40 hover:text-white/60 hover:bg-white/5 h-8 text-[10px] transition-colors"
+                          >
+                            Maybe later
+                          </Button>
+                        </div>
                       </div>
-                    ) : msg.sender === 'user' ? (
-                      <div className="max-w-[85%] rounded-2xl p-4 shadow-sm bg-primary text-primary-foreground rounded-tr-none">
-                        {renderMessageContent(msg as ChatMessage & { references?: string[] })}
-                      </div>
-                    ) : (
-                      <div className="max-w-[85%] rounded-2xl p-4 shadow-sm bg-muted/80 text-foreground rounded-tl-none border border-border/50">
-                        {renderDesignerContent(msg)}
-                      </div>
-                    )}
+                    </Card>
                   </motion.div>
-                ))}
+                )}
               </AnimatePresence>
-              
-              {(isGenerating || isSending || showIntroTyping) && (
-                <div className="flex justify-start">
-                  <div className="bg-muted/80 rounded-2xl rounded-tl-none p-4 flex items-center gap-3 border border-border/50">
-                    <div className="flex items-center gap-1.5 px-1 py-1">
-                      <style>{`
-                        .thinking-dot {
-                          width: 6px;
-                          height: 6px;
-                          border-radius: 999px;
-                          background: currentColor;
-                          opacity: 0.6;
-                          animation: thinkingWave 1.2s infinite ease-in-out;
-                        }
-                        .thinking-dot:nth-child(2) { animation-delay: 0.2s; }
-                        .thinking-dot:nth-child(3) { animation-delay: 0.4s; }
-                        @keyframes thinkingWave {
-                          0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-                          40% { transform: scale(1); opacity: 1; }
-                        }
-                        .arrow-thinking {
-                          animation: arrowPulseRotate 1.2s infinite ease-in-out;
-                        }
-                        @keyframes arrowPulseRotate {
-                          0% { transform: rotate(0deg) scale(1); opacity: 0.8; }
-                          50% { transform: rotate(15deg) scale(1.1); opacity: 1; }
-                          100% { transform: rotate(0deg) scale(1); opacity: 0.8; }
-                        }
-                      `}</style>
-                      <span className="thinking-dot text-primary"></span>
-                      <span className="thinking-dot text-primary"></span>
-                      <span className="thinking-dot text-primary"></span>
-                    </div>
-                    {(() => {
-                      const txt = (isSending || isGenerating) ? getLoadingStatusText(loadingSeconds) : null;
-                      return txt ? (
-                        <span className="text-xs text-muted-foreground/70 italic select-none">{txt}</span>
-                      ) : null;
-                    })()}
-                  </div>
-                </div>
-              )}
 
-              {genError && (
-                <div className="flex justify-start">
-                  <div className="bg-destructive/10 text-destructive rounded-2xl rounded-tl-none p-4 border border-destructive/20" data-testid="text-gen-error">
-                    <p className="text-sm">{genError}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-
-          <AnimatePresence>
-            {isLimitReached && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                className="mx-auto max-w-[640px] w-full px-4 mb-4"
-              >
-                <Card className="border-white/10 bg-black/40 backdrop-blur-xl p-6 py-6 relative overflow-hidden group shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
-                  <div className="relative z-10 flex flex-col items-center text-center space-y-3">
-                    <img
-                      src={logoIcon}
-                      alt=""
-                      className="h-10 w-10 transition-all duration-300 drop-shadow-[0_0_8px_rgba(124,58,237,0.4)] group-hover:scale-110 group-hover:drop-shadow-[0_0_15px_rgba(255,255,255,0.6)] group-hover:brightness-125"
-                    />
-                    <div className="space-y-1.5">
-                      <h3 className="text-sm font-bold text-white tracking-tight">
-                        You've reached your complimentary design session.
-                      </h3>
-                      <p className="text-xs text-white/50 leading-relaxed max-w-[280px] mx-auto pb-1">
-                        Create your account to continue shaping your brand identity.
-                      </p>
-                    </div>
-                    <div className="flex flex-col w-full gap-2 pt-1">
-                      <Button
-                        onClick={openAuthModal}
-                        className="w-full bg-primary hover:bg-primary/90 text-white font-bold h-10 text-xs shadow-[0_0_15px_rgba(124,58,237,0.3)] transition-all hover:scale-[1.02] active:scale-[0.98] relative overflow-hidden upgrade-button-glow"
+              {authState.isAuthenticated && Math.floor(creditsState.credits / 10) < 2 && Math.floor(creditsState.credits / 10) > 0 && (
+                <div className="mx-4 mb-2">
+                  <Card className="border-yellow-500/30 bg-yellow-500/10 p-4 transition-colors hover:bg-yellow-500/15">
+                    <div className="flex flex-col sm:flex-row items-center gap-3 justify-between">
+                      <div className="flex items-center gap-2 text-sm text-yellow-200">
+                        <AlertTriangle className="w-4 h-4 shrink-0 text-yellow-400" />
+                        <span>You're running low on revisions — keep creating without interruptions.</span>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        variant="secondary" 
+                        className="bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-100 border-none shrink-0"
+                        onClick={() => setLocation("/checkout")}
                       >
-                        Continue My Brand Journey
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        onClick={() => setIsLimitReached(false)}
-                        className="w-full text-white/40 hover:text-white/60 hover:bg-white/5 h-8 text-[10px] transition-colors"
-                      >
-                        Maybe later
+                        View revisions
                       </Button>
                     </div>
-                  </div>
-                </Card>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {authState.isAuthenticated && Math.floor(creditsState.credits / 10) < 2 && Math.floor(creditsState.credits / 10) > 0 && (
-            <div className="mx-4 mb-2">
-              <Card className="border-yellow-500/30 bg-yellow-500/10 p-4 transition-colors hover:bg-yellow-500/15">
-                <div className="flex flex-col sm:flex-row items-center gap-3 justify-between">
-                  <div className="flex items-center gap-2 text-sm text-yellow-200">
-                    <AlertTriangle className="w-4 h-4 shrink-0 text-yellow-400" />
-                    <span>You're running low on revisions — keep creating without interruptions.</span>
-                  </div>
-                  <Button 
-                    size="sm" 
-                    variant="secondary" 
-                    className="bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-100 border-none shrink-0"
-                    onClick={() => setLocation("/checkout")}
-                  >
-                    View revisions
-                  </Button>
+                  </Card>
                 </div>
-              </Card>
-            </div>
-          )}
+              )}
 
               {/* Action Bar + Chat Input */}
               <div className={`border-t border-border bg-background shrink-0 transition-opacity duration-300 ${isLimitReached ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
                 <div className="relative max-w-3xl mx-auto p-4 flex flex-col gap-3">
-                  {/* Cloudinary upload in-progress indicator */}
                   {isCloudinaryUploading && (
                     <div className="flex items-center gap-2 px-1" data-testid="cloudinary-upload-loading">
                       <div className="w-20 h-20 rounded-lg border border-border/50 bg-muted/40 flex flex-col items-center justify-center gap-1.5 shrink-0">
@@ -1574,8 +1427,6 @@ export default function AppPage() {
                       </div>
                     </div>
                   )}
-
-                  {/* Preview tiles for attached images */}
                   {attachedImageUrls.length > 0 && (
                     <div className="flex gap-2 max-h-24 overflow-x-auto" data-testid="preview-tiles-container">
                       {attachedImageUrls.map((url, i) => (
@@ -1593,11 +1444,9 @@ export default function AppPage() {
                       ))}
                     </div>
                   )}
-
                   {uploadError && (
                     <p className="text-xs text-red-400 font-medium" data-testid="text-upload-error">{uploadError}</p>
                   )}
-
                   <form onSubmit={onSendMessage} className="relative flex items-center gap-2">
                     <input
                       type="file"
@@ -1626,7 +1475,6 @@ export default function AppPage() {
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-
                     <Input
                       ref={inputRef}
                       value={input}
@@ -1635,7 +1483,6 @@ export default function AppPage() {
                       className="h-12 rounded-full px-6 bg-muted/50 border-none focus-visible:ring-1 focus-visible:ring-primary/20"
                       data-testid="input-chat-message"
                     />
-
                     <Button
                       type="submit"
                       size="icon"
@@ -1645,22 +1492,22 @@ export default function AppPage() {
                     >
                       {isSendLocked ? (
                         <style>{`
-                      @keyframes lock-think {
-                        0%, 100% {
-                          transform: scale(1);
-                          opacity: 0.8;
-                          box-shadow: 0 0 8px rgba(167, 139, 250, 0.4);
-                        }
-                        50% {
-                          transform: scale(1.15);
-                          opacity: 1;
-                          box-shadow: 0 0 12px rgba(167, 139, 250, 0.6);
-                        }
-                      }
-                      .send-lock {
-                        animation: lock-think 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-                      }
-                    `}</style>
+                          @keyframes lock-think {
+                            0%, 100% {
+                              transform: scale(1);
+                              opacity: 0.8;
+                              box-shadow: 0 0 8px rgba(167, 139, 250, 0.4);
+                            }
+                            50% {
+                              transform: scale(1.15);
+                              opacity: 1;
+                              box-shadow: 0 0 12px rgba(167, 139, 250, 0.6);
+                            }
+                          }
+                          .send-lock {
+                            animation: lock-think 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+                          }
+                        `}</style>
                       ) : null}
                       {isSendLocked ? (
                         <div className="send-lock w-3 h-3 rounded-md bg-purple-400" />
@@ -1708,7 +1555,6 @@ export default function AppPage() {
                 </Button>
               )}
             </div>
-            
             {archiveOpen && (
               <div className="relative w-full">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -1728,19 +1574,16 @@ export default function AppPage() {
                   }}
                   onKeyDown={(e) => {
                     if (!isSearchOpen) return;
-
                     if (e.key === "ArrowDown") {
                       e.preventDefault();
                       setHighlightIndex(prev =>
                         prev < filteredProjects.length - 1 ? prev + 1 : prev
                       );
                     }
-
                     if (e.key === "ArrowUp") {
                       e.preventDefault();
                       setHighlightIndex(prev => (prev > 0 ? prev - 1 : 0));
                     }
-
                     if (e.key === "Enter") {
                       e.preventDefault();
                       const selected = filteredProjects[highlightIndex];
@@ -1748,14 +1591,12 @@ export default function AppPage() {
                         activateProject(selected);
                       }
                     }
-
                     if (e.key === "Escape") {
                       setIsSearchOpen(false);
                       setSearch("");
                     }
                   }}
                 />
-
                 {isSearchOpen && (
                   <div
                     className="absolute z-50 mt-1 w-full rounded-lg bg-background border border-border shadow-xl max-h-60 overflow-y-auto
@@ -1789,138 +1630,132 @@ export default function AppPage() {
               </div>
             )}
           </div>
-          
           {archiveOpen && (
             <>
-            <ScrollArea className="flex-1 p-3">
-              <div className="flex flex-col gap-4 pb-20">
-                <div
-                  className="cursor-pointer hover:bg-primary/10 transition-colors duration-150 ease-out border border-dashed border-primary/20 rounded-xl bg-muted/30 overflow-hidden"
-                  onClick={() => setLocation("/gallery")}
-                >
-                  {filteredImages.length === 0 ? (
-                    <div className="text-center py-6">
-                      <p className="text-xs font-semibold text-white/90 tracking-tight">No concepts yet</p>
-                      <p className="text-[10px] text-primary/50 mt-1 tracking-wide">Browse All Files</p>
-                    </div>
-                  ) : (
-                    <div className="p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">Brand Gallery</p>
-                        <p className="text-[10px] text-primary/60 tracking-wide">View All</p>
+              <ScrollArea className="flex-1 p-3">
+                <div className="flex flex-col gap-4 pb-20">
+                  <div
+                    className="cursor-pointer hover:bg-primary/10 transition-colors duration-150 ease-out border border-dashed border-primary/20 rounded-xl bg-muted/30 overflow-hidden"
+                    onClick={() => setLocation("/gallery")}
+                  >
+                    {filteredImages.length === 0 ? (
+                      <div className="text-center py-6">
+                        <p className="text-xs font-semibold text-white/90 tracking-tight">No concepts yet</p>
+                        <p className="text-[10px] text-primary/50 mt-1 tracking-wide">Browse All Files</p>
                       </div>
-                      <div className="grid grid-cols-4 gap-1">
-                        {filteredImages.slice(0, 8).map((img) => (
-                          <img
-                            key={img.generated_image_id}
-                            src={img.url}
-                            alt=""
-                            className="w-full aspect-square rounded object-cover"
-                            loading="lazy"
-                          />
-                        ))}
+                    ) : (
+                      <div className="p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">Brand Gallery</p>
+                          <p className="text-[10px] text-primary/60 tracking-wide">View All</p>
+                        </div>
+                        <div className="grid grid-cols-4 gap-1">
+                          {filteredImages.slice(0, 8).map((img) => (
+                            <img
+                              key={img.generated_image_id}
+                              src={img.url}
+                              alt=""
+                              className="w-full aspect-square rounded object-cover"
+                              loading="lazy"
+                            />
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-4">
-                  <div className="pt-2">
-                    <TooltipProvider>
-                      <Tooltip delayDuration={0}>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            className="w-full h-[44px] border-dashed border-primary/30 hover:border-primary/60 hover:bg-primary/5 text-xs gap-2"
-                            onClick={() => {
-                              if (!authState.isAuthenticated) {
-                                requireAuth("new_project");
-                              } else {
-                                startNewProject();
-                              }
-                            }}
-                          >
-                            <Sparkles className="w-3.5 h-3.5 text-primary" />
-                            + New Project
-                          </Button>
-                        </TooltipTrigger>
-                        {!authState.isAuthenticated && (
-                          <TooltipContent className="bg-black text-white text-[10px] px-2 py-1 border-none">
-                            Additional projects require an account.
-                          </TooltipContent>
-                        )}
-                      </Tooltip>
-                    </TooltipProvider>
+                    )}
                   </div>
-
-                  <div className="space-y-2">
-                    <h4 className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground px-1">YOUR PROJECTS</h4>
-                    <div className="space-y-1">
-                      {projectList.map((proj) => {
-                        const isActive = projectState.activeProject?.project_id === proj.id;
-                        return (
-                          <div 
-                            key={proj.id}
-                            id={`project-${proj.id}`}
-                            onClick={() => activateProject(proj)}
-                            className={`group flex items-center justify-between px-2 py-1.5 rounded-lg cursor-pointer transition-colors duration-150 ${isActive ? 'bg-primary/15 border border-primary/30' : 'bg-muted/30 border border-transparent hover:bg-neutral-800'}`}
-                          >
-                            <div className="flex items-center gap-2 overflow-hidden">
-                              <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${isActive ? 'bg-primary' : 'bg-muted-foreground/40'}`} />
-                              <span className={`text-xs truncate font-medium ${isActive ? 'text-primary' : 'text-muted-foreground'}`}>{proj.name}</span>
-                            </div>
-
-                            <div
-                              className="opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={(e) => e.stopPropagation()}
+                  <div className="space-y-4">
+                    <div className="pt-2">
+                      <TooltipProvider>
+                        <Tooltip delayDuration={0}>
+                          <TooltipTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              className="w-full h-[44px] border-dashed border-primary/30 hover:border-primary/60 hover:bg-primary/5 text-xs gap-2"
+                              onClick={() => {
+                                if (!authState.isAuthenticated) {
+                                  requireAuth("new_project");
+                                } else {
+                                  startNewProject();
+                                }
+                              }}
                             >
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <button className="p-1 hover:bg-white/10 rounded">
-                                    <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
-                                  </button>
-                                </DropdownMenuTrigger>
-
-                                <DropdownMenuContent align="end" className="w-36">
-                                  <DropdownMenuItem onClick={() => openRenameModal(proj)}>
-                                    Rename
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => openDeleteModal(proj)} className="text-red-500">
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                              <Sparkles className="w-3.5 h-3.5 text-primary" />
+                              + New Project
+                            </Button>
+                          </TooltipTrigger>
+                          {!authState.isAuthenticated && (
+                            <TooltipContent className="bg-black text-white text-[10px] px-2 py-1 border-none">
+                              Additional projects require an account.
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground px-1">YOUR PROJECTS</h4>
+                      <div className="space-y-1">
+                        {projectList.map((proj) => {
+                          const isActive = projectState.activeProject?.project_id === proj.id;
+                          return (
+                            <div 
+                              key={proj.id}
+                              id={`project-${proj.id}`}
+                              onClick={() => activateProject(proj)}
+                              className={`group flex items-center justify-between px-2 py-1.5 rounded-lg cursor-pointer transition-colors duration-150 ${isActive ? 'bg-primary/15 border border-primary/30' : 'bg-muted/30 border border-transparent hover:bg-neutral-800'}`}
+                            >
+                              <div className="flex items-center gap-2 overflow-hidden">
+                                <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${isActive ? 'bg-primary' : 'bg-muted-foreground/40'}`} />
+                                <span className={`text-xs truncate font-medium ${isActive ? 'text-primary' : 'text-muted-foreground'}`}>{proj.name}</span>
+                              </div>
+                              <div
+                                className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <button className="p-1 hover:bg-white/10 rounded">
+                                      <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-36">
+                                    <DropdownMenuItem onClick={() => openRenameModal(proj)}>
+                                      Rename
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => openDeleteModal(proj)} className="text-red-500">
+                                      Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
-                      {projectList.length === 0 && (
-                        <p className="text-[10px] text-muted-foreground/50 italic px-2">Projects appear here</p>
-                      )}
+                          );
+                        })}
+                        {projectList.length === 0 && (
+                          <p className="text-[10px] text-muted-foreground/50 italic px-2">Projects appear here</p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-
-              </div>
-            </ScrollArea>
-            {authState.isAuthenticated && (
-              <div className="shrink-0 border-t border-border p-3 flex flex-col">
-                <div className="px-2 pb-2 text-[10px] text-muted-foreground uppercase tracking-wide">
-                  Account
+              </ScrollArea>
+              {authState.isAuthenticated && (
+                <div className="shrink-0 border-t border-border p-3 flex flex-col">
+                  <div className="px-2 pb-2 text-[10px] text-muted-foreground uppercase tracking-wide">
+                    Account
+                  </div>
+                  <button
+                    onClick={() => setLocation("/profile")}
+                    className="group flex items-center justify-start gap-2 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 bg-primary/5 border border-primary/10 hover:bg-primary/10 hover:shadow-[0_0_18px_rgba(124,58,237,0.35)]"
+                    data-testid="button-settings-billing"
+                  >
+                    <UserIcon className="w-5 h-5 text-primary/80 group-hover:text-white" />
+                    <span className="text-sm text-primary/90 group-hover:text-white">
+                      Settings & Billing
+                    </span>
+                  </button>
                 </div>
-                <button
-                  onClick={() => setLocation("/profile")}
-                  className="group flex items-center justify-start gap-2 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 bg-primary/5 border border-primary/10 hover:bg-primary/10 hover:shadow-[0_0_18px_rgba(124,58,237,0.35)]"
-                  data-testid="button-settings-billing"
-                >
-                  <UserIcon className="w-5 h-5 text-primary/80 group-hover:text-white" />
-                  <span className="text-sm text-primary/90 group-hover:text-white">
-                    Settings & Billing
-                  </span>
-                </button>
-              </div>
-            )}
+              )}
             </>
           )}
         </motion.div>
@@ -1942,7 +1777,6 @@ export default function AppPage() {
                 <X className="w-6 h-6" />
               </Button>
             </div>
-
             <div className="flex-1 flex items-center justify-center w-full relative px-16" onClick={(e) => e.stopPropagation()}>
               {viewerImages.length > 1 && (
                 <Button
@@ -1955,7 +1789,6 @@ export default function AppPage() {
                   <ChevronLeft className="w-8 h-8" />
                 </Button>
               )}
-
               <img
                 src={viewerImages[viewerIndex].url}
                 alt={viewerImages[viewerIndex].title || `Concept ${viewerIndex + 1}`}
@@ -1963,7 +1796,6 @@ export default function AppPage() {
                 data-testid="img-viewer-current"
                 onClick={() => { setViewerOpen(false); setLocation('/gallery'); }}
               />
-
               {viewerImages.length > 1 && (
                 <Button
                   variant="ghost"
@@ -1976,7 +1808,6 @@ export default function AppPage() {
                 </Button>
               )}
             </div>
-
             <div className="p-6 w-full max-w-2xl flex flex-col sm:flex-row items-center justify-between gap-4" onClick={(e) => e.stopPropagation()}>
               <div className="space-y-1 text-center sm:text-left">
                 <p className="text-sm font-bold text-white/90">
@@ -1989,7 +1820,6 @@ export default function AppPage() {
               <Button className="rounded-full" onClick={() => {
                 let url = viewerImages[viewerIndex].url;
                 const title = viewerImages[viewerIndex].title || `Concept ${viewerIndex + 1}`;
-                // Cloudinary attachment shortcut: insert fl_attachment after /upload/
                 if (url.includes("res.cloudinary.com")) {
                   url = url.replace("/upload/", "/upload/fl_attachment/");
                 }
@@ -2053,6 +1883,7 @@ export default function AppPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
       <Dialog open={projectModalOpen} onOpenChange={(open) => {
         if (!isCreatingProject) {
           setProjectModalOpen(open);
@@ -2206,7 +2037,6 @@ export default function AppPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {/* Upgrade Prompt Dialog removed as per instructions */}
 
       {/* Image Intent Modal */}
       <Dialog open={showImageIntentModal} onOpenChange={setShowImageIntentModal}>
@@ -2220,8 +2050,6 @@ export default function AppPage() {
             <DialogHeader>
               <DialogTitle className="text-lg font-bold text-white">How should we use this photo?</DialogTitle>
             </DialogHeader>
-
-            {/* Option 1: Visual Inspiration */}
             <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-2 hover:border-white/20 transition-colors">
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1">
@@ -2242,8 +2070,6 @@ export default function AppPage() {
                 Use for Inspiration
               </Button>
             </div>
-
-            {/* Option 2: Image Reference */}
             <div className="rounded-xl border border-[#5B21B6]/40 bg-[#5B21B6]/10 p-4 space-y-2 hover:border-[#5B21B6]/60 transition-colors">
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1">
