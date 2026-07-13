@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import TopBar from "@/components/TopBar";
 import { ChevronDown } from "lucide-react";
+import { Helmet } from "react-helmet-async";
 
 const FAQ_DATA = [
   {
@@ -138,50 +139,67 @@ function FaqCard({ question, answer, index }: { question: string; answer: string
 
 export default function Faq() {
   return (
-    <div className="flex flex-col min-h-screen bg-background text-foreground">
-      <TopBar />
-      
-      <main className="flex-1 py-20 px-4 relative overflow-hidden">
-        {/* Background Gradients */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-primary/5 blur-[120px] pointer-events-none" />
+    <>
+      <Helmet>
+        <title>FAQ – EasyPeasyLogo</title>
+        <meta name="description" content="Frequently asked questions about EasyPeasyLogo's AI brand identity design process, revisions, pricing, and commercial use." />
+        <meta property="og:title" content="FAQ – EasyPeasyLogo" />
+        <meta property="og:description" content="Frequently asked questions about EasyPeasyLogo's AI brand identity design process, revisions, pricing, and commercial use." />
+        <meta property="og:url" content="https://easypeasylogo.com/faq" />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content="https://easypeasylogo.com/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="FAQ – EasyPeasyLogo" />
+        <meta name="twitter:description" content="Frequently asked questions about EasyPeasyLogo's AI brand identity design process, revisions, pricing, and commercial use." />
+        <meta name="twitter:image" content="https://easypeasylogo.com/og-image.png" />
+        <link rel="canonical" href="https://easypeasylogo.com/faq" />
+      </Helmet>
+
+      <div className="flex flex-col min-h-screen bg-background text-foreground">
+        <TopBar />
         
-        <div className="max-w-3xl mx-auto space-y-12 relative z-10">
-          <div className="text-center space-y-4">
-            <motion.h1 
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-4xl md:text-5xl font-bold"
-            >
-              FAQ
-            </motion.h1>
-            <motion.p 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="text-muted-foreground text-lg"
-            >
-              Common questions about our Design Process.
-            </motion.p>
-          </div>
+        <main className="flex-1 py-20 px-4 relative overflow-hidden">
+          {/* Background Gradients */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-primary/5 blur-[120px] pointer-events-none" />
+          
+          <div className="max-w-3xl mx-auto space-y-12 relative z-10">
+            <div className="text-center space-y-4">
+              <motion.h1 
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-4xl md:text-5xl font-bold"
+              >
+                FAQ
+              </motion.h1>
+              <motion.p 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="text-muted-foreground text-lg"
+              >
+                Common questions about our Design Process.
+              </motion.p>
+            </div>
 
-          <div className="space-y-4 pb-20">
-            {FAQ_DATA.map((item, i) => (
-              <FaqCard key={i} index={i} {...item} />
-            ))}
+            <div className="space-y-4 pb-20">
+              {FAQ_DATA.map((item, i) => (
+                <FaqCard key={i} index={i} {...item} />
+              ))}
+            </div>
           </div>
-        </div>
-      </main>
+        </main>
 
-      <footer className="py-12 px-4 border-t border-border mt-auto">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8 text-sm text-muted-foreground">
-          <Link href="/" className="hover:text-foreground transition-colors">Back to Home</Link>
-          <div className="flex items-center gap-6">
-            <Link href="/legal-info" className="hover:text-foreground transition-colors">Legal</Link>
-            <Link href="/legal#privacy" className="hover:text-foreground transition-colors">Privacy</Link>
-            <Link href="/legal#terms" className="hover:text-foreground transition-colors">Terms</Link>
+        <footer className="py-12 px-4 border-t border-border mt-auto">
+          <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8 text-sm text-muted-foreground">
+            <Link href="/" className="hover:text-foreground transition-colors">Back to Home</Link>
+            <div className="flex items-center gap-6">
+              <Link href="/legal-info" className="hover:text-foreground transition-colors">Legal</Link>
+              <Link href="/legal#privacy" className="hover:text-foreground transition-colors">Privacy</Link>
+              <Link href="/legal#terms" className="hover:text-foreground transition-colors">Terms</Link>
+            </div>
           </div>
-        </div>
-      </footer>
-    </div>
+        </footer>
+      </div>
+    </>
   );
 }
