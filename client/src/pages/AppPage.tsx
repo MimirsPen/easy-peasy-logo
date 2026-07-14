@@ -682,6 +682,13 @@ export default function AppPage() {
         (payload) => {
           if (payload.new.generation_status === 'completed') {
             console.log('[Realtime] Generation completed for project', projectId);
+            
+            // 👇 CLEAR THE TIMEOUT RIGHT HERE
+            if (genTimeoutRef.current) {
+              clearTimeout(genTimeoutRef.current);
+              genTimeoutRef.current = null;
+            }
+
             setStatus('idle');
             stopLoadingTimer();
             setSendingProjects(prev => { const n = { ...prev }; delete n[projectId]; return n; });
