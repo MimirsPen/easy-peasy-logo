@@ -882,6 +882,9 @@ export default function AppPage() {
       return;
     }
     if (!input.trim() || isSendLocked) return;
+    // 👇 BLOCK SEND IF IMAGE IS STILL UPLOADING
+    if (isCloudinaryUploading) return;
+    
     setSendingProjects(prev => ({ ...prev, [currentActiveId]: true }));
     let projectId = authState.isAuthenticated
       ? (projectState.activeProject?.project_id ?? null)
@@ -1494,7 +1497,7 @@ export default function AppPage() {
                       type="submit"
                       size="icon"
                       className="shrink-0 rounded-full bg-primary text-primary-foreground"
-                      disabled={!input.trim() || isSendLocked}
+                      disabled={!input.trim() || isSendLocked || isCloudinaryUploading}
                       data-testid="button-send-message"
                     >
                       {isSendLocked ? (
