@@ -399,18 +399,23 @@ export default function AppPage() {
     );
   }, [search, projectList]);
 
+  // 👇 FILTER MESSAGES BY CURRENT PROJECT
+  const currentMessages = useMemo(() => {
+    return chatState.messages.filter(msg => msg.project_id === currentActiveId);
+  }, [chatState.messages, currentActiveId]);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isGenerating = generationState.status === 'pending' || generationState.status === 'running';
   const isSendLocked = introRunning || isGenerating || isSending;
-  const isEmptyAuthenticatedProject = authState.isAuthenticated && chatState.messages.length === 0;
+  const isEmptyAuthenticatedProject = authState.isAuthenticated && currentMessages.length === 0;
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [chatState.messages, generationState.status]);
+  }, [currentMessages, generationState.status]);
 
   useEffect(() => {
     if (authState.isAuthenticated && authModalOpen) {
@@ -1283,7 +1288,7 @@ export default function AppPage() {
               <ScrollArea className="flex-1 p-4" ref={scrollRef}>
                 <div className="max-w-3xl mx-auto space-y-6 py-4">
                   <AnimatePresence initial={false}>
-                    {chatState.messages.map((msg) => (
+                    {currentMessages.map((msg) => (
                       <motion.div
                         key={msg.chat_message_id}
                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
