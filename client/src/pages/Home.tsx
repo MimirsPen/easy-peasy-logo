@@ -13,7 +13,7 @@ import { motion, useAnimation, useMotionValue, useAnimationFrame, useTransform, 
 import { useInView } from "react-intersection-observer";
 import { ArrowRight } from "lucide-react";
 import { Helmet } from "react-helmet-async";
-import logoIcon from "@assets/LOGO-removebg-preview_1771145708755.png";
+import logoIcon from "@assets/logo.webp";
 
 // ---- Dynamic image imports (all 22 images) ----
 const imageModules = import.meta.glob("@assets/*.{png,webp}", { eager: true, import: "default" });

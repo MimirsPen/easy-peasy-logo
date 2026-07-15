@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { LogOut, User as UserIcon } from "lucide-react";
-import logoIcon from "@assets/LOGO-removebg-preview_1771145708755.png";
+import logoIcon from "@assets/logo.webp";
 import React from "react";
 
 type TopBarProps = {

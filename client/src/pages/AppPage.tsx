@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Send, Image as ImageIcon, Sparkles, Download, Shield, ChevronLeft, ChevronRight, X, PanelRightClose, PanelRightOpen, AlertTriangle, Search, ExternalLink, MoreHorizontal, Settings, User as UserIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChatMessage, GeneratedImage } from "@/types";
-import logoIcon from "@assets/LOGO-removebg-preview_1771145708755.png";
+import logoIcon from "@assets/logo.webp";
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
