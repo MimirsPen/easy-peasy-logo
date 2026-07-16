@@ -4,30 +4,140 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { useLocation } from "wouter";
-import { ChevronLeft, Search, Download } from "lucide-react";
+import { ChevronLeft, Search, Download, X } from "lucide-react";
 import { useState, useMemo } from "react";
 import TopBar from "@/components/TopBar";
 import { motion } from "framer-motion";
 import { GeneratedImage } from "@/types";
+import { supabase } from "@/lib/supabaseClient";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+// Group images by the row ID (removing the -1 or -2 suffix)
+function groupImagesByRow(images: GeneratedImage[]) {
+  const groups: { rowId: string; concept1: GeneratedImage; concept2: GeneratedImage | null }[] = [];
+  const map = new Map<string, { concept1: GeneratedImage | null; concept2: GeneratedImage | null }>();
+
+  images.forEach((img) => {
+    let rowId: string;
+    let index: "concept1" | "concept2";
+
+    const lastDashIdx = img.generated_image_id.lastIndexOf('-');
+    if (lastDashIdx > 0) {
+      rowId = img.generated_image_id.substring(0, lastDashIdx);
+      const suffix = img.generated_image_id.substring(lastDashIdx + 1);
+      index = suffix === "1" ? "concept1" : "concept2";
+    } else {
+      rowId = img.generated_image_id;
+      index = "concept1";
+    }
+
+    if (!map.has(rowId)) {
+      map.set(rowId, { concept1: null, concept2: null });
+    }
+    const entry = map.get(rowId)!;
+    entry[index] = img;
+  });
+
+  map.forEach((entry, rowId) => {
+    if (entry.concept1) {
+      groups.push({
+        rowId,
+        concept1: entry.concept1,
+        concept2: entry.concept2 || null,
+      });
+    }
+  });
+
+  return groups;
+}
 
 export default function Gallery() {
   const [, setLocation] = useLocation();
   const { state: authState } = useAuth();
-  const { state: generationState } = useGeneration();
+  const { state: generationState, setImages } = useGeneration();
   const [search, setSearch] = useState("");
+  const [groupToDelete, setGroupToDelete] = useState<{
+    rowId: string;
+    concept1: GeneratedImage;
+    concept2: GeneratedImage | null;
+  } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [frontImageMap, setFrontImageMap] = useState<Record<string, "concept1" | "concept2">>({});
 
   const filteredImages = useMemo(() => {
-    const now = Date.now();
     const term = search.toLowerCase();
-
     return generationState.generatedImages.filter(img => {
-      const notExpired = new Date(img.expires_at).getTime() > now;
       const matchesSearch = !term ||
         (img.title?.toLowerCase().includes(term)) ||
         img.url.toLowerCase().includes(term);
-      return notExpired && matchesSearch;
+      return matchesSearch;
     });
   }, [generationState.generatedImages, search]);
+
+  const filteredGroups = useMemo(() => {
+    return groupImagesByRow(filteredImages);
+  }, [filteredImages]);
+
+  const handleDelete = async () => {
+    if (!groupToDelete || !authState.isAuthenticated) return;
+    setIsDeleting(true);
+
+    try {
+      const rowId = groupToDelete.rowId;
+      // ✅ FIXED: using "logo_id" (not "id")
+      const { error } = await supabase
+        .from("logo_gallery")
+        .delete()
+        .eq("logo_id", rowId);
+
+      if (error) {
+        console.error("Delete error:", error);
+        setIsDeleting(false);
+        return;
+      }
+
+      const updated = generationState.generatedImages.filter(
+        (img) => !img.generated_image_id.startsWith(rowId + '-')
+      );
+      setImages(updated);
+
+      setGroupToDelete(null);
+    } catch (err) {
+      console.error("Delete error:", err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const toggleFrontImage = (rowId: string) => {
+    setFrontImageMap((prev) => ({
+      ...prev,
+      [rowId]: prev[rowId] === "concept1" ? "concept2" : "concept1",
+    }));
+  };
+
+  const handleDownload = (img: GeneratedImage) => {
+    let url = img.url;
+    const title = img.title || "Concept";
+    if (url.includes("res.cloudinary.com")) {
+      url = url.replace("/upload/", "/upload/fl_attachment/");
+    }
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${title.replace(/\s+/g, "-").toLowerCase()}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -67,7 +177,7 @@ export default function Gallery() {
           </div>
         </div>
 
-        {filteredImages.length === 0 ? (
+        {filteredGroups.length === 0 ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -90,57 +200,132 @@ export default function Gallery() {
           </motion.div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {filteredImages.map((img: GeneratedImage) => (
-              <motion.div
-                key={img.generated_image_id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <Card className="overflow-hidden group">
-                  <CardContent className="p-0 relative aspect-square">
-                    <img
-                      src={img.url}
-                      alt={img.title || "Logo concept"}
-                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+            {filteredGroups.map((group) => {
+              const frontKey = frontImageMap[group.rowId] || "concept1";
+              const frontImg = frontKey === "concept1" ? group.concept1 : group.concept2;
+              const backImg = frontKey === "concept1" ? group.concept2 : group.concept1;
+
+              return (
+                <motion.div
+                  key={group.rowId}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="group relative"
+                >
+                  <Card className="overflow-hidden relative">
+                    <CardContent className="p-0 relative aspect-square">
+                      {backImg && (
+                        <div
+                          className="absolute inset-0 cursor-pointer transition-transform duration-300 hover:scale-105 z-0"
+                          style={{ transform: "translate(8px, 8px) rotate(-2deg)" }}
+                          onClick={() => toggleFrontImage(group.rowId)}
+                        >
+                          <img
+                            src={backImg.url}
+                            alt={backImg.title || "Concept"}
+                            className="w-full h-full object-cover rounded-lg border-2 border-border/30"
+                          />
+                        </div>
+                      )}
+
+                      <div
+                        className="absolute inset-0 z-10 cursor-pointer"
+                        onClick={() => toggleFrontImage(group.rowId)}
+                      >
+                        <img
+                          src={frontImg.url}
+                          alt={frontImg.title || "Concept"}
+                          className="w-full h-full object-cover transition-transform group-hover:scale-105 rounded-lg"
+                        />
+                      </div>
+
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex items-center justify-center gap-2">
+                        <Button
+                          size="icon"
+                          variant="secondary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownload(frontImg);
+                          }}
+                          className="hover:outline hover:outline-2 hover:outline-primary hover:shadow-[0_0_12px_rgba(124,58,237,0.35)] transition-all duration-200 hover:scale-[1.05]"
+                          data-testid={`button-download-${frontImg.generated_image_id}`}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </div>
+
                       <Button
                         size="icon"
-                        variant="secondary"
-                        onClick={() => {
-                          let url = img.url;
-                          const title = img.title || 'Concept';
-                          if (url.includes('res.cloudinary.com')) {
-                            url = url.replace('/upload/', '/upload/fl_attachment/');
-                          }
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = `${title.replace(/\s+/g, '-').toLowerCase()}.png`;
-                          document.body.appendChild(a);
-                          a.click();
-                          document.body.removeChild(a);
+                        variant="ghost"
+                        className="absolute top-1 right-1 z-30 text-white/70 hover:text-red-500 hover:bg-red-500/20 transition-all duration-200 opacity-0 group-hover:opacity-100"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setGroupToDelete(group);
                         }}
-                        className="hover:outline hover:outline-2 hover:outline-primary hover:shadow-[0_0_12px_rgba(124,58,237,0.35)] transition-all duration-200 hover:scale-[1.05]"
-                        data-testid={`button-download-${img.generated_image_id}`}
+                        data-testid={`button-delete-${group.rowId}`}
                       >
-                        <Download className="h-4 w-4" />
+                        <X className="h-5 w-5" />
                       </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
 
-                <div className="mt-2 px-1">
-                  {img.title && (
-                    <p className="text-sm font-bold text-foreground truncate">{img.title}</p>
-                  )}
-                  {/* Expiration timer removed */}
-                </div>
-              </motion.div>
-            ))}
+                  <div className="mt-2 px-1 flex flex-wrap gap-2">
+                    {group.concept1 && (
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {group.concept1.title || "Concept 1"}
+                      </span>
+                    )}
+                    {group.concept2 && (
+                      <span className="text-xs font-medium text-muted-foreground">
+                        • {group.concept2.title || "Concept 2"}
+                      </span>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         )}
       </main>
+
+      <AlertDialog open={!!groupToDelete} onOpenChange={(open) => !open && setGroupToDelete(null)}>
+        <AlertDialogContent className="border-white/10 bg-[#0A0A0B] p-6 outline-none sm:max-w-[425px]">
+          <AlertDialogHeader className="space-y-3">
+            <AlertDialogTitle className="text-xl font-bold text-white flex items-center gap-2">
+              <span className="text-red-500">⚠️</span> Delete Both Concepts?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-white/60 text-sm leading-relaxed">
+              You are about to permanently delete both concepts from your gallery:
+              <br />
+              <br />
+              <span className="text-white font-semibold">
+                • {groupToDelete?.concept1?.title || "Concept 1"}
+                {groupToDelete?.concept2 && (
+                  <>
+                    <br />• {groupToDelete.concept2.title || "Concept 2"}
+                  </>
+                )}
+              </span>
+              <br />
+              <br />
+              <span className="text-red-400 font-semibold">This action cannot be undone.</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex flex-col sm:flex-row gap-3 mt-6">
+            <AlertDialogCancel className="flex-1 h-11 rounded-xl border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white transition-all duration-200">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="flex-[1.5] h-11 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold shadow-[0_0_20px_rgba(239,68,68,0.2)] hover:shadow-[0_0_25px_rgba(239,68,68,0.4)] transition-all duration-200 border-none"
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete Forever"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
