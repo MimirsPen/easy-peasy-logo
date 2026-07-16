@@ -411,11 +411,33 @@ export default function AppPage() {
   const isSendLocked = introRunning || isGenerating || isSending;
   const isEmptyAuthenticatedProject = authState.isAuthenticated && currentMessages.length === 0;
 
+  // --- 🆕 MOBILE SCROLL FIX: two separate effects ---
+
+  // 1. Scroll to bottom when messages or generation status changes
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    const timer = setTimeout(() => {
+      if (scrollRef.current) {
+        const viewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+        if (viewport) {
+          (viewport as HTMLElement).scrollTop = (viewport as HTMLElement).scrollHeight;
+        }
+      }
+    }, 50);
+    return () => clearTimeout(timer);
   }, [currentMessages, generationState.status]);
+
+  // 2. Initial load / project change – ensures mobile scroll works on first load
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (scrollRef.current) {
+        const viewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+        if (viewport) {
+          (viewport as HTMLElement).scrollTop = (viewport as HTMLElement).scrollHeight;
+        }
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [currentActiveId]);
 
   useEffect(() => {
     if (authState.isAuthenticated && authModalOpen) {
@@ -594,7 +616,8 @@ export default function AppPage() {
       const allImages: GeneratedImage[] = [];
       galleryData.forEach((row: any) => {
         if (row.concept_1_url) allImages.push({
-          generated_image_id: row.id ? `${row.id}-1` : crypto.randomUUID(),
+          // ✅ FIXED: use logo_id instead of id
+          generated_image_id: row.logo_id ? `${row.logo_id}-1` : crypto.randomUUID(),
           project_id: row.project_id,
           url: row.concept_1_url,
           title: row.concept_1_title || "Concept 1",
@@ -602,7 +625,8 @@ export default function AppPage() {
           expires_at: new Date(Date.now() + 30 * 86400000).toISOString(),
         });
         if (row.concept_2_url) allImages.push({
-          generated_image_id: row.id ? `${row.id}-2` : crypto.randomUUID(),
+          // ✅ FIXED: use logo_id instead of id
+          generated_image_id: row.logo_id ? `${row.logo_id}-2` : crypto.randomUUID(),
           project_id: row.project_id,
           url: row.concept_2_url,
           title: row.concept_2_title || "Concept 2",
