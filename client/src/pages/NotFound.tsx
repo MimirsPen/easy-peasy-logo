@@ -1,32 +1,17 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md border-border/50 bg-card/50 backdrop-blur-xl shadow-2xl">
-        <CardContent className="pt-6">
-          <div className="flex mb-4 gap-2">
-            <AlertCircle className="h-8 w-8 text-destructive" />
-            <h1 className="text-2xl font-bold font-display tracking-tight">404 Page Not Found</h1>
-          </div>
-
-          <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
-            The page you are looking for doesn't exist or has been moved. 
-            Check the URL or head back to the home page.
-          </p>
-          
-          <div className="mt-8">
-            <Link href="/">
-              <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
-                Return to Home
-              </Button>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground p-4 text-center">
+      <h1 className="error404Title">404</h1>
+      <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">
+        <span className="inline-block headline-reveal-left">Easy Peasy Lemon Squeezy —</span><br />
+        <span className="inline-block headline-reveal-right text-purple-400">Looks like you rolled off the page.</span>
+      </h1>
+      <Button asChild size="lg" className="rounded-xl bg-gradient-to-r from-[#5B21B6] via-[#6D28D9] to-[#7C3AED] text-white font-bold px-8 mt-4 hover:scale-105 transition-all duration-200 shadow-[0_0_30px_rgba(124,58,237,0.4)] hover:shadow-[0_0_40px_rgba(124,58,237,0.6)] active:scale-95">
+        <Link href="/">Back to Home</Link>
+      </Button>
     </div>
   );
 }
