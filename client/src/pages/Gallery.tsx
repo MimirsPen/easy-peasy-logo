@@ -88,20 +88,24 @@ export default function Gallery() {
   }, [filteredImages]);
 
   const handleDelete = async () => {
-    if (!groupToDelete || !authState.isAuthenticated) return;
+    if (!groupToDelete || !authState.isAuthenticated) {
+      alert("You must be logged in to delete.");
+      return;
+    }
     setIsDeleting(true);
 
     try {
       const rowId = groupToDelete.rowId;
-      // ✅ Delete with both logo_id and user_id to satisfy RLS
+      // ✅ FIX: use authState.user?.id (the auth user's UUID)
       const { error } = await supabase
         .from("logo_gallery")
         .delete()
         .eq("logo_id", rowId)
-        .eq("user_id", authState.user?.user_id);
+        .eq("user_id", authState.user?.id); // <--- this is the correct field
 
       if (error) {
         console.error("Delete error:", error);
+        alert("Delete failed: " + error.message);
         setIsDeleting(false);
         return;
       }
@@ -113,8 +117,9 @@ export default function Gallery() {
       setImages(updated);
 
       setGroupToDelete(null);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Delete error:", err);
+      alert("Unexpected error: " + err.message);
     } finally {
       setIsDeleting(false);
     }
@@ -215,19 +220,19 @@ export default function Gallery() {
                   transition={{ duration: 0.3 }}
                   className="group relative"
                 >
-                  {/* ✅ FIX: overflow-visible so the back image is not clipped */}
-                  <Card className="overflow-visible relative">
+                  {/* ✅ FIX: overflow-visible and a larger offset for deck-of-cards effect */}
+                  <Card className="overflow-visible relative shadow-lg">
                     <CardContent className="p-0 relative aspect-square">
                       {backImg && (
                         <div
                           className="absolute inset-0 cursor-pointer transition-transform duration-300 hover:scale-105 z-0"
-                          style={{ transform: "translate(8px, 8px) rotate(-2deg)" }}
+                          style={{ transform: "translate(16px, 16px) rotate(-3deg)" }}
                           onClick={() => toggleFrontImage(group.rowId)}
                         >
                           <img
                             src={backImg.url}
                             alt={backImg.title || "Concept"}
-                            className="w-full h-full object-cover rounded-lg border-2 border-border/30"
+                            className="w-full h-full object-cover rounded-lg border-2 border-border/30 shadow-md"
                           />
                         </div>
                       )}
@@ -239,7 +244,7 @@ export default function Gallery() {
                         <img
                           src={frontImg.url}
                           alt={frontImg.title || "Concept"}
-                          className="w-full h-full object-cover transition-transform group-hover:scale-105 rounded-lg"
+                          className="w-full h-full object-cover transition-transform group-hover:scale-105 rounded-lg shadow-lg"
                         />
                       </div>
 
