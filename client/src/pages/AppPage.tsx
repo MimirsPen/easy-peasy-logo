@@ -411,7 +411,7 @@ export default function AppPage() {
   const isSendLocked = introRunning || isGenerating || isSending;
   const isEmptyAuthenticatedProject = authState.isAuthenticated && currentMessages.length === 0;
 
-  // --- 🆕 MOBILE SCROLL FIX: two separate effects ---
+  // --- MOBILE SCROLL FIX: two separate effects ---
 
   // 1. Scroll to bottom when messages or generation status changes
   useEffect(() => {
@@ -1855,9 +1855,9 @@ export default function AppPage() {
                   <Shield className="w-3 h-3" /> Click image to view in gallery · {viewerIndex + 1} of {viewerImages.length}
                 </p>
               </div>
-              {/* ✅ Updated Download button with hover effects */}
+              {/* ✅ Updated Download button – only scale and brightness, no flash */}
               <Button 
-                className="rounded-full hover:outline hover:outline-2 hover:outline-primary hover:shadow-[0_0_12px_rgba(124,58,237,0.35)] transition-all duration-200 hover:scale-[1.05]" 
+                className="rounded-full hover:scale-105 hover:brightness-110 transition-transform duration-200" 
                 onClick={() => {
                   let url = viewerImages[viewerIndex].url;
                   const title = viewerImages[viewerIndex].title || `Concept ${viewerIndex + 1}`;
