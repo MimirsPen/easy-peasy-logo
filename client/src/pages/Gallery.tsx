@@ -125,7 +125,6 @@ export default function Gallery() {
   const toggleFrontImage = (rowId: string, target?: "concept1" | "concept2") => {
     setFrontImageMap((prev) => {
       const current = prev[rowId] || "concept1";
-      // If target is specified, set it directly. Otherwise toggle.
       const next = target || (current === "concept1" ? "concept2" : "concept1");
       return {
         ...prev,
@@ -222,9 +221,8 @@ export default function Gallery() {
                   transition={{ duration: 0.3 }}
                   className="group"
                 >
-                  {/* Image container – whole thing is clickable, but only the individual images scale */}
-                  <div className="relative aspect-square cursor-pointer">
-                    {/* Back image (offset to the right) – scales on hover */}
+                  <div className="relative aspect-square">
+                    {/* BACK IMAGE – scales on hover */}
                     {backImg && (
                       <div
                         className="absolute inset-0 transition-transform duration-300 hover:scale-105 z-0"
@@ -239,52 +237,53 @@ export default function Gallery() {
                       </div>
                     )}
 
-                    {/* Front image – scales on hover */}
+                    {/* FRONT IMAGE + OVERLAY + BUTTONS – scales together on hover */}
                     <div
-                      className="absolute inset-0 transition-transform duration-300 hover:scale-105 z-10"
+                      className="absolute inset-0 transition-transform duration-300 hover:scale-105 z-10 cursor-pointer"
                       onClick={() => toggleFrontImage(group.rowId)}
                     >
+                      {/* Front image */}
                       <img
                         src={frontImg.url}
                         alt={frontImg.title || "Concept"}
                         className="w-full h-full object-cover rounded-lg shadow-lg"
                       />
-                    </div>
 
-                    {/* Dark overlay – pointer-events: none so clicks pass through */}
-                    <div className="absolute inset-0 z-20 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg pointer-events-none" />
+                      {/* Dark overlay – pointer-events: none so clicks pass through */}
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg pointer-events-none" />
 
-                    {/* Buttons – positioned absolutely, pointer-events: auto */}
-                    <div className="absolute inset-0 z-30 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-                      <div className="pointer-events-auto">
-                        <Button
-                          size="icon"
-                          variant="secondary"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDownload(frontImg);
-                          }}
-                          className="hover:outline hover:outline-2 hover:outline-primary hover:shadow-[0_0_12px_rgba(124,58,237,0.35)] transition-all duration-200 hover:scale-[1.05]"
-                        >
-                          <Download className="h-5 w-5" />
-                        </Button>
+                      {/* Download button – center */}
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                        <div className="pointer-events-auto">
+                          <Button
+                            size="icon"
+                            variant="secondary"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownload(frontImg);
+                            }}
+                            className="hover:outline hover:outline-2 hover:outline-primary hover:shadow-[0_0_12px_rgba(124,58,237,0.35)] transition-all duration-200 hover:scale-[1.05]"
+                          >
+                            <Download className="h-5 w-5" />
+                          </Button>
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Delete button – top right */}
-                    <div className="absolute top-2 right-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-                      <div className="pointer-events-auto">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="text-white/70 hover:text-red-500 hover:bg-red-500/20 transition-all duration-200"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setGroupToDelete(group);
-                          }}
-                        >
-                          <X className="h-5 w-5" />
-                        </Button>
+                      {/* Delete button – top right */}
+                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                        <div className="pointer-events-auto">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="text-white/70 hover:text-red-500 hover:bg-red-500/20 transition-all duration-200"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setGroupToDelete(group);
+                            }}
+                          >
+                            <X className="h-5 w-5" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
