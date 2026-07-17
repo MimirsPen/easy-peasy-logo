@@ -96,7 +96,6 @@ export default function Gallery() {
 
     try {
       const rowId = groupToDelete.rowId;
-      // ✅ DELETE ONLY BY logo_id – RLS handles the user check automatically
       const { error } = await supabase
         .from("logo_gallery")
         .delete()
@@ -109,7 +108,6 @@ export default function Gallery() {
         return;
       }
 
-      // Remove both concepts from state
       const updated = generationState.generatedImages.filter(
         (img) => !img.generated_image_id.startsWith(rowId + '-')
       );
@@ -219,35 +217,42 @@ export default function Gallery() {
                   transition={{ duration: 0.3 }}
                   className="group relative"
                 >
-                  {/* Card with horizontal offset only */}
-                  <Card className="overflow-visible relative shadow-lg">
-                    <CardContent className="p-0 relative aspect-square">
-                      {backImg && (
-                        <div
-                          className="absolute inset-0 cursor-pointer transition-transform duration-300 hover:scale-105 z-0"
-                          style={{ transform: "translate(24px, 0px) rotate(-2deg)" }}
-                          onClick={() => toggleFrontImage(group.rowId)}
-                        >
-                          <img
-                            src={backImg.url}
-                            alt={backImg.title || "Concept"}
-                            className="w-full h-full object-cover rounded-lg border-2 border-border/30 shadow-md"
-                          />
-                        </div>
-                      )}
-
+                  {/* Card container – scales on hover, and clicks pass through overlay */}
+                  <div
+                    className="relative aspect-square cursor-pointer transition-transform duration-300 hover:scale-105"
+                    onClick={() => toggleFrontImage(group.rowId)}
+                  >
+                    {/* Back image (offset to the right) */}
+                    {backImg && (
                       <div
-                        className="absolute inset-0 z-10 cursor-pointer"
-                        onClick={() => toggleFrontImage(group.rowId)}
+                        className="absolute inset-0 transition-transform duration-300 z-0"
+                        style={{ transform: "translate(24px, 0px) rotate(-2deg)" }}
                       >
                         <img
-                          src={frontImg.url}
-                          alt={frontImg.title || "Concept"}
-                          className="w-full h-full object-cover transition-transform group-hover:scale-105 rounded-lg shadow-lg"
+                          src={backImg.url}
+                          alt={backImg.title || "Concept"}
+                          className="w-full h-full object-cover rounded-lg border-2 border-border/30 shadow-md"
                         />
                       </div>
+                    )}
 
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex items-center justify-center gap-2">
+                    {/* Front image */}
+                    <div className="absolute inset-0 z-10">
+                      <img
+                        src={frontImg.url}
+                        alt={frontImg.title || "Concept"}
+                        className="w-full h-full object-cover rounded-lg shadow-lg"
+                      />
+                    </div>
+
+                    {/* Dark overlay – pointer-events: none so clicks pass through to container */}
+                    <div className="absolute inset-0 z-20 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg pointer-events-none">
+                      {/* The actual overlay is just for visual – buttons are separate and clickable */}
+                    </div>
+
+                    {/* Buttons – positioned absolutely, pointer-events: auto */}
+                    <div className="absolute inset-0 z-30 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                      <div className="pointer-events-auto">
                         <Button
                           size="icon"
                           variant="secondary"
@@ -256,28 +261,31 @@ export default function Gallery() {
                             handleDownload(frontImg);
                           }}
                           className="hover:outline hover:outline-2 hover:outline-primary hover:shadow-[0_0_12px_rgba(124,58,237,0.35)] transition-all duration-200 hover:scale-[1.05]"
-                          data-testid={`button-download-${frontImg.generated_image_id}`}
                         >
-                          <Download className="h-4 w-4" />
+                          <Download className="h-5 w-5" />
                         </Button>
                       </div>
+                    </div>
 
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="absolute top-1 right-1 z-30 text-white/70 hover:text-red-500 hover:bg-red-500/20 transition-all duration-200 opacity-0 group-hover:opacity-100"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setGroupToDelete(group);
-                        }}
-                        data-testid={`button-delete-${group.rowId}`}
-                      >
-                        <X className="h-5 w-5" />
-                      </Button>
-                    </CardContent>
-                  </Card>
+                    {/* Delete button – top right, also pointer-events-auto */}
+                    <div className="absolute top-2 right-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                      <div className="pointer-events-auto">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="text-white/70 hover:text-red-500 hover:bg-red-500/20 transition-all duration-200"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setGroupToDelete(group);
+                          }}
+                        >
+                          <X className="h-5 w-5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
 
-                  {/* Dot indicator */}
+                  {/* Dot indicator – unchanged */}
                   <div className="mt-2 px-1 flex flex-col gap-0.5">
                     <div className="flex items-center gap-1.5">
                       <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${frontKey === "concept1" ? "bg-primary" : "bg-muted-foreground/30"}`} />
