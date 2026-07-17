@@ -236,13 +236,13 @@ export default function Gallery() {
                   className="group"
                 >
                   <div className="relative aspect-square">
-                    {/* BACK IMAGE – scale 1.2 + slide further right on hover */}
+                    {/* BACK IMAGE – scale same as front, slide further right on hover */}
                     {backImg && (
                       <div
                         className="absolute inset-0 transition-all duration-300 z-0"
                         style={{
                           transform: isBackHovered
-                            ? 'scale(1.2) translateX(48px) rotate(-2deg)'
+                            ? 'scale(1.05) translateX(48px) rotate(-2deg)'
                             : 'translateX(24px) rotate(-2deg)',
                         }}
                         onClick={() => toggleFrontImage(rowId)}
