@@ -93,11 +93,12 @@ export default function Gallery() {
 
     try {
       const rowId = groupToDelete.rowId;
-      // ✅ FIXED: using "logo_id" (not "id")
+      // ✅ Delete with both logo_id and user_id to satisfy RLS
       const { error } = await supabase
         .from("logo_gallery")
         .delete()
-        .eq("logo_id", rowId);
+        .eq("logo_id", rowId)
+        .eq("user_id", authState.user?.user_id);
 
       if (error) {
         console.error("Delete error:", error);
@@ -105,6 +106,7 @@ export default function Gallery() {
         return;
       }
 
+      // Remove both concepts from state (they share the same rowId)
       const updated = generationState.generatedImages.filter(
         (img) => !img.generated_image_id.startsWith(rowId + '-')
       );
@@ -213,7 +215,8 @@ export default function Gallery() {
                   transition={{ duration: 0.3 }}
                   className="group relative"
                 >
-                  <Card className="overflow-hidden relative">
+                  {/* ✅ FIX: overflow-visible so the back image is not clipped */}
+                  <Card className="overflow-visible relative">
                     <CardContent className="p-0 relative aspect-square">
                       {backImg && (
                         <div
