@@ -616,8 +616,8 @@ export default function AppPage() {
       const allImages: GeneratedImage[] = [];
       galleryData.forEach((row: any) => {
         if (row.concept_1_url) allImages.push({
-          // ✅ FIXED: use logo_id instead of id
-          generated_image_id: row.logo_id ? `${row.logo_id}-1` : crypto.randomUUID(),
+          // ✅ FINAL FIX: use logo_id directly (no fallback)
+          generated_image_id: `${row.logo_id}-1`,
           project_id: row.project_id,
           url: row.concept_1_url,
           title: row.concept_1_title || "Concept 1",
@@ -625,8 +625,7 @@ export default function AppPage() {
           expires_at: new Date(Date.now() + 30 * 86400000).toISOString(),
         });
         if (row.concept_2_url) allImages.push({
-          // ✅ FIXED: use logo_id instead of id
-          generated_image_id: row.logo_id ? `${row.logo_id}-2` : crypto.randomUUID(),
+          generated_image_id: `${row.logo_id}-2`,
           project_id: row.project_id,
           url: row.concept_2_url,
           title: row.concept_2_title || "Concept 2",
