@@ -72,6 +72,7 @@ export default function Gallery() {
   } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [frontImageMap, setFrontImageMap] = useState<Record<string, "concept1" | "concept2">>({});
+  const [hovered, setHovered] = useState<Record<string, { front: boolean; back: boolean }>>({});
 
   const filteredImages = useMemo(() => {
     const term = search.toLowerCase();
@@ -147,6 +148,16 @@ export default function Gallery() {
     document.body.removeChild(a);
   };
 
+  const setHover = (rowId: string, type: "front" | "back", value: boolean) => {
+    setHovered((prev) => ({
+      ...prev,
+      [rowId]: {
+        ...prev[rowId],
+        [type]: value,
+      },
+    }));
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <TopBar />
@@ -209,25 +220,34 @@ export default function Gallery() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-16 gap-y-8">
             {filteredGroups.map((group) => {
-              const frontKey = frontImageMap[group.rowId] || "concept1";
+              const rowId = group.rowId;
+              const frontKey = frontImageMap[rowId] || "concept1";
               const frontImg = frontKey === "concept1" ? group.concept1 : group.concept2;
               const backImg = frontKey === "concept1" ? group.concept2 : group.concept1;
+              const isFrontHovered = hovered[rowId]?.front || false;
+              const isBackHovered = hovered[rowId]?.back || false;
 
               return (
                 <motion.div
-                  key={group.rowId}
+                  key={rowId}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
                   className="group"
                 >
                   <div className="relative aspect-square">
-                    {/* BACK IMAGE – scales on hover */}
+                    {/* BACK IMAGE – scale 1.2 + slide further right on hover */}
                     {backImg && (
                       <div
-                        className="absolute inset-0 transition-transform duration-300 hover:scale-105 z-0"
-                        style={{ transform: "translate(24px, 0px) rotate(-2deg)" }}
-                        onClick={() => toggleFrontImage(group.rowId)}
+                        className="absolute inset-0 transition-all duration-300 z-0"
+                        style={{
+                          transform: isBackHovered
+                            ? 'scale(1.2) translateX(48px) rotate(-2deg)'
+                            : 'translateX(24px) rotate(-2deg)',
+                        }}
+                        onClick={() => toggleFrontImage(rowId)}
+                        onMouseEnter={() => setHover(rowId, 'back', true)}
+                        onMouseLeave={() => setHover(rowId, 'back', false)}
                       >
                         <img
                           src={backImg.url}
@@ -237,22 +257,24 @@ export default function Gallery() {
                       </div>
                     )}
 
-                    {/* FRONT IMAGE + OVERLAY + BUTTONS – scales together on hover */}
+                    {/* FRONT IMAGE + OVERLAY + BUTTONS – scale 1.05 on hover */}
                     <div
-                      className="absolute inset-0 transition-transform duration-300 hover:scale-105 z-10 cursor-pointer"
-                      onClick={() => toggleFrontImage(group.rowId)}
+                      className="absolute inset-0 transition-transform duration-300 z-10 cursor-pointer"
+                      style={{
+                        transform: isFrontHovered ? 'scale(1.05)' : 'scale(1)',
+                      }}
+                      onClick={() => toggleFrontImage(rowId)}
+                      onMouseEnter={() => setHover(rowId, 'front', true)}
+                      onMouseLeave={() => setHover(rowId, 'front', false)}
                     >
-                      {/* Front image */}
                       <img
                         src={frontImg.url}
                         alt={frontImg.title || "Concept"}
                         className="w-full h-full object-cover rounded-lg shadow-lg"
                       />
 
-                      {/* Dark overlay – pointer-events: none so clicks pass through */}
                       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg pointer-events-none" />
 
-                      {/* Download button – center */}
                       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
                         <div className="pointer-events-auto">
                           <Button
@@ -269,7 +291,6 @@ export default function Gallery() {
                         </div>
                       </div>
 
-                      {/* Delete button – top right */}
                       <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
                         <div className="pointer-events-auto">
                           <Button
@@ -288,11 +309,11 @@ export default function Gallery() {
                     </div>
                   </div>
 
-                  {/* Titles – clickable, more spacing below (mt-4) */}
+                  {/* Titles – clickable, mt-4 */}
                   <div className="mt-4 px-1 flex flex-col gap-0.5">
                     <div
                       className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity"
-                      onClick={() => toggleFrontImage(group.rowId, "concept1")}
+                      onClick={() => toggleFrontImage(rowId, "concept1")}
                     >
                       <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${frontKey === "concept1" ? "bg-primary" : "bg-muted-foreground/30"}`} />
                       <span className={`text-xs font-medium ${frontKey === "concept1" ? "text-primary" : "text-muted-foreground/60"}`}>
@@ -302,7 +323,7 @@ export default function Gallery() {
                     {group.concept2 && (
                       <div
                         className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => toggleFrontImage(group.rowId, "concept2")}
+                        onClick={() => toggleFrontImage(rowId, "concept2")}
                       >
                         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${frontKey === "concept2" ? "bg-primary" : "bg-muted-foreground/30"}`} />
                         <span className={`text-xs font-medium ${frontKey === "concept2" ? "text-primary" : "text-muted-foreground/60"}`}>
