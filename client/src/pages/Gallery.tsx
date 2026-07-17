@@ -96,12 +96,11 @@ export default function Gallery() {
 
     try {
       const rowId = groupToDelete.rowId;
-      // ✅ FIX: use authState.user?.id (the auth user's UUID)
+      // ✅ DELETE ONLY BY logo_id – RLS handles the user check automatically
       const { error } = await supabase
         .from("logo_gallery")
         .delete()
-        .eq("logo_id", rowId)
-        .eq("user_id", authState.user?.id); // <--- this is the correct field
+        .eq("logo_id", rowId);
 
       if (error) {
         console.error("Delete error:", error);
@@ -110,7 +109,7 @@ export default function Gallery() {
         return;
       }
 
-      // Remove both concepts from state (they share the same rowId)
+      // Remove both concepts from state
       const updated = generationState.generatedImages.filter(
         (img) => !img.generated_image_id.startsWith(rowId + '-')
       );
@@ -206,7 +205,7 @@ export default function Gallery() {
             </Button>
           </motion.div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-16 gap-y-8">
             {filteredGroups.map((group) => {
               const frontKey = frontImageMap[group.rowId] || "concept1";
               const frontImg = frontKey === "concept1" ? group.concept1 : group.concept2;
@@ -220,13 +219,13 @@ export default function Gallery() {
                   transition={{ duration: 0.3 }}
                   className="group relative"
                 >
-                  {/* ✅ FIX: overflow-visible and a larger offset for deck-of-cards effect */}
+                  {/* Card with horizontal offset only */}
                   <Card className="overflow-visible relative shadow-lg">
                     <CardContent className="p-0 relative aspect-square">
                       {backImg && (
                         <div
                           className="absolute inset-0 cursor-pointer transition-transform duration-300 hover:scale-105 z-0"
-                          style={{ transform: "translate(16px, 16px) rotate(-3deg)" }}
+                          style={{ transform: "translate(24px, 0px) rotate(-2deg)" }}
                           onClick={() => toggleFrontImage(group.rowId)}
                         >
                           <img
@@ -278,16 +277,21 @@ export default function Gallery() {
                     </CardContent>
                   </Card>
 
-                  <div className="mt-2 px-1 flex flex-wrap gap-2">
-                    {group.concept1 && (
-                      <span className="text-xs font-medium text-muted-foreground">
+                  {/* Dot indicator */}
+                  <div className="mt-2 px-1 flex flex-col gap-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${frontKey === "concept1" ? "bg-primary" : "bg-muted-foreground/30"}`} />
+                      <span className={`text-xs font-medium ${frontKey === "concept1" ? "text-primary" : "text-muted-foreground/60"}`}>
                         {group.concept1.title || "Concept 1"}
                       </span>
-                    )}
+                    </div>
                     {group.concept2 && (
-                      <span className="text-xs font-medium text-muted-foreground">
-                        • {group.concept2.title || "Concept 2"}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${frontKey === "concept2" ? "bg-primary" : "bg-muted-foreground/30"}`} />
+                        <span className={`text-xs font-medium ${frontKey === "concept2" ? "text-primary" : "text-muted-foreground/60"}`}>
+                          {group.concept2.title || "Concept 2"}
+                        </span>
+                      </div>
                     )}
                   </div>
                 </motion.div>
