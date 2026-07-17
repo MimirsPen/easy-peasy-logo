@@ -1855,19 +1855,24 @@ export default function AppPage() {
                   <Shield className="w-3 h-3" /> Click image to view in gallery · {viewerIndex + 1} of {viewerImages.length}
                 </p>
               </div>
-              <Button className="rounded-full" onClick={() => {
-                let url = viewerImages[viewerIndex].url;
-                const title = viewerImages[viewerIndex].title || `Concept ${viewerIndex + 1}`;
-                if (url.includes("res.cloudinary.com")) {
-                  url = url.replace("/upload/", "/upload/fl_attachment/");
-                }
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${title.replace(/\s+/g, '-').toLowerCase()}.png`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-              }} data-testid="button-download-mockup">
+              {/* ✅ Updated Download button with hover effects */}
+              <Button 
+                className="rounded-full hover:outline hover:outline-2 hover:outline-primary hover:shadow-[0_0_12px_rgba(124,58,237,0.35)] transition-all duration-200 hover:scale-[1.05]" 
+                onClick={() => {
+                  let url = viewerImages[viewerIndex].url;
+                  const title = viewerImages[viewerIndex].title || `Concept ${viewerIndex + 1}`;
+                  if (url.includes("res.cloudinary.com")) {
+                    url = url.replace("/upload/", "/upload/fl_attachment/");
+                  }
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `${title.replace(/\s+/g, '-').toLowerCase()}.png`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                }} 
+                data-testid="button-download-mockup"
+              >
                 <Download className="w-4 h-4 mr-2" /> Download HQ
               </Button>
             </div>
