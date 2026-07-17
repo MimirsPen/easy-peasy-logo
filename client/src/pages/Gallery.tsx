@@ -122,11 +122,16 @@ export default function Gallery() {
     }
   };
 
-  const toggleFrontImage = (rowId: string) => {
-    setFrontImageMap((prev) => ({
-      ...prev,
-      [rowId]: prev[rowId] === "concept1" ? "concept2" : "concept1",
-    }));
+  const toggleFrontImage = (rowId: string, target?: "concept1" | "concept2") => {
+    setFrontImageMap((prev) => {
+      const current = prev[rowId] || "concept1";
+      // If target is specified, set it directly. Otherwise toggle.
+      const next = target || (current === "concept1" ? "concept2" : "concept1");
+      return {
+        ...prev,
+        [rowId]: next,
+      };
+    });
   };
 
   const handleDownload = (img: GeneratedImage) => {
@@ -215,18 +220,16 @@ export default function Gallery() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
-                  className="group relative"
+                  className="group"
                 >
-                  {/* Card container – scales on hover, and clicks pass through overlay */}
-                  <div
-                    className="relative aspect-square cursor-pointer transition-transform duration-300 hover:scale-105"
-                    onClick={() => toggleFrontImage(group.rowId)}
-                  >
-                    {/* Back image (offset to the right) */}
+                  {/* Image container – whole thing is clickable, but only the individual images scale */}
+                  <div className="relative aspect-square cursor-pointer">
+                    {/* Back image (offset to the right) – scales on hover */}
                     {backImg && (
                       <div
-                        className="absolute inset-0 transition-transform duration-300 z-0"
+                        className="absolute inset-0 transition-transform duration-300 hover:scale-105 z-0"
                         style={{ transform: "translate(24px, 0px) rotate(-2deg)" }}
+                        onClick={() => toggleFrontImage(group.rowId)}
                       >
                         <img
                           src={backImg.url}
@@ -236,8 +239,11 @@ export default function Gallery() {
                       </div>
                     )}
 
-                    {/* Front image */}
-                    <div className="absolute inset-0 z-10">
+                    {/* Front image – scales on hover */}
+                    <div
+                      className="absolute inset-0 transition-transform duration-300 hover:scale-105 z-10"
+                      onClick={() => toggleFrontImage(group.rowId)}
+                    >
                       <img
                         src={frontImg.url}
                         alt={frontImg.title || "Concept"}
@@ -245,10 +251,8 @@ export default function Gallery() {
                       />
                     </div>
 
-                    {/* Dark overlay – pointer-events: none so clicks pass through to container */}
-                    <div className="absolute inset-0 z-20 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg pointer-events-none">
-                      {/* The actual overlay is just for visual – buttons are separate and clickable */}
-                    </div>
+                    {/* Dark overlay – pointer-events: none so clicks pass through */}
+                    <div className="absolute inset-0 z-20 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg pointer-events-none" />
 
                     {/* Buttons – positioned absolutely, pointer-events: auto */}
                     <div className="absolute inset-0 z-30 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
@@ -267,7 +271,7 @@ export default function Gallery() {
                       </div>
                     </div>
 
-                    {/* Delete button – top right, also pointer-events-auto */}
+                    {/* Delete button – top right */}
                     <div className="absolute top-2 right-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
                       <div className="pointer-events-auto">
                         <Button
@@ -285,16 +289,22 @@ export default function Gallery() {
                     </div>
                   </div>
 
-                  {/* Dot indicator – unchanged */}
-                  <div className="mt-2 px-1 flex flex-col gap-0.5">
-                    <div className="flex items-center gap-1.5">
+                  {/* Titles – clickable, more spacing below (mt-4) */}
+                  <div className="mt-4 px-1 flex flex-col gap-0.5">
+                    <div
+                      className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={() => toggleFrontImage(group.rowId, "concept1")}
+                    >
                       <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${frontKey === "concept1" ? "bg-primary" : "bg-muted-foreground/30"}`} />
                       <span className={`text-xs font-medium ${frontKey === "concept1" ? "text-primary" : "text-muted-foreground/60"}`}>
                         {group.concept1.title || "Concept 1"}
                       </span>
                     </div>
                     {group.concept2 && (
-                      <div className="flex items-center gap-1.5">
+                      <div
+                        className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => toggleFrontImage(group.rowId, "concept2")}
+                      >
                         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${frontKey === "concept2" ? "bg-primary" : "bg-muted-foreground/30"}`} />
                         <span className={`text-xs font-medium ${frontKey === "concept2" ? "text-primary" : "text-muted-foreground/60"}`}>
                           {group.concept2.title || "Concept 2"}
