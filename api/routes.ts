@@ -274,7 +274,7 @@ export function registerRoutes(
           concept_1_url: concept_1_url || null,
           concept_2_title: concept_2_title || null,
           concept_2_url: concept_2_url || null,
-          response_text: response || null, // 👈 ADDED THIS
+          response_text: response || null,
         });
         if (insertError) console.error("[callback] logo_gallery insert error:", insertError.message);
         else console.log(`[callback] saved to logo_gallery pid=${projectId}`);
@@ -434,13 +434,13 @@ export function registerRoutes(
       }
 
       const PRICE_CREDIT_MAP: Record<string, number> = {
-        "price_1T2Rhc1ly8rEUw056M6TKESM": 100,
-        "price_1T2Ri91ly8rEUw05q6nojIYC": 500,
-        "price_1T2Rib1ly8rEUw05Yi2teTxQ": 1000,
-        "price_1T2RbA1ly8rEUw057ADvOKGW": 100,
-        "price_1T2Rk31ly8rEUw05ow0gBcXH": 200,
-        "price_1T2Rkt1ly8rEUw05HUo3KYl1": 600,
-        "price_1T2Rmr1ly8rEUw05KumYzkLY": 1200
+        "price_1T2Rhc1ly8rEUw056M6TKESM": 50,    // was 100
+        "price_1T2Ri91ly8rEUw05q6nojIYC": 250,   // was 500
+        "price_1T2Rib1ly8rEUw05Yi2teTxQ": 500,   // was 1000
+        "price_1T2RbA1ly8rEUw057ADvOKGW": 50,    // was 100
+        "price_1T2Rk31ly8rEUw05ow0gBcXH": 100,   // was 200
+        "price_1T2Rkt1ly8rEUw05HUo3KYl1": 300,   // was 600
+        "price_1T2Rmr1ly8rEUw05KumYzkLY": 600    // was 1200
       };
 
       const baseCredits = PRICE_CREDIT_MAP[priceId];
