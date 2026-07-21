@@ -56,7 +56,18 @@ export default function Checkout() {
         return;
       }
 
-      const amount = isStarter ? 100 : (priceId === 'price_1T2Rib1ly8rEUw05Yi2teTxQ' ? 1000 : (priceId === 'price_1T2Ri91ly8rEUw05q6nojIYC' ? 500 : 100));
+      // Determine amount based on priceId (new Live IDs)
+      let amount = 100; // default for starter or 5-revision pack
+      if (isStarter) {
+        amount = 100;
+      } else if (priceId === 'price_1TvG7j0IfYdAlbaaANQOBR0F') { // 50 revisions
+        amount = 1000;
+      } else if (priceId === 'price_1TvG7l0IfYdAlbaawtqWABhv') { // 25 revisions
+        amount = 500;
+      } else {
+        amount = 100; // 5 revisions or others
+      }
+
       const quantity = isStarter ? 1 : topUpQuantities[amount as keyof typeof topUpQuantities];
 
       const response = await fetch('/api/create-checkout-session', {
@@ -73,7 +84,6 @@ export default function Checkout() {
 
       const data = await response.json();
       if (data.url) {
-        // Keep spinner running — browser will navigate away
         window.location.href = data.url;
       } else {
         setLoadingPriceId(null);
@@ -94,7 +104,7 @@ export default function Checkout() {
       displayRevisions: 5,
       displayConcepts: 10,
       desc: "Quick fuel for your next 10 concepts.",
-      priceId: "price_1T2Rhc1ly8rEUw056M6TKESM"
+      priceId: "price_1TvG7o0IfYdAlbaaq4hLeJYL"  // ✅ Live ID
     },
     {
       amount: 500,
@@ -103,7 +113,7 @@ export default function Checkout() {
       displayRevisions: 25,
       displayConcepts: 50,
       desc: "Perfect for ongoing design projects (50 concepts).",
-      priceId: "price_1T2Ri91ly8rEUw05q6nojIYC"
+      priceId: "price_1TvG7l0IfYdAlbaawtqWABhv"  // ✅ Live ID
     },
     {
       amount: 1000,
@@ -112,7 +122,7 @@ export default function Checkout() {
       displayRevisions: 50,
       displayConcepts: 100,
       desc: "Built for serious creative runs (100 concepts).",
-      priceId: "price_1T2Rib1ly8rEUw05Yi2teTxQ"
+      priceId: "price_1TvG7j0IfYdAlbaaANQOBR0F"  // ✅ Live ID
     }
   ];
 
@@ -188,12 +198,12 @@ export default function Checkout() {
                     </li>
                   </ul>
                   <Button
-                    onClick={() => handlePurchase("price_1T2RbA1ly8rEUw057ADvOKGW", true)}
+                    onClick={() => handlePurchase("price_1TvG7n0IfYdAlbaaeFio0fDS", true)} // ✅ Live ID
                     disabled={loadingPriceId !== null}
                     className="w-full bg-gradient-to-r from-[#5B21B6] via-[#6D28D9] to-[#7C3AED] text-white font-bold hover:scale-105 transition-all duration-200 hover:shadow-[0_0_22px_rgba(124,58,237,0.6)] active:scale-95 hover:ring-purple-500/40 rounded-xl"
                     data-testid="button-purchase-starter"
                   >
-                    {loadingPriceId === "price_1T2RbA1ly8rEUw057ADvOKGW" ? (
+                    {loadingPriceId === "price_1TvG7n0IfYdAlbaaeFio0fDS" ? (
                       <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Connecting to Stripe...</>
                     ) : "Get Starter Pack"}
                   </Button>
@@ -288,12 +298,12 @@ export default function Checkout() {
             >
               {[
                 {
-                  price: "$14.99",
+                  price: "$13.99",   // updated price
                   credits: 200,
                   label: "Pro",
                   badge: "Recommended",
                   bonusLabel: "+5 BONUS REVISIONS FIRST MONTH",
-                  priceId: "price_1T2Rk31ly8rEUw05ow0gBcXH",
+                  priceId: "price_1TvG7p0IfYdAlbaatlAQEsF7", // ✅ Live ID
                   features: [
                     "10 Monthly Revisions",
                     "Total of 20 Monthly Unique Concepts (2 per revision)",
@@ -303,12 +313,12 @@ export default function Checkout() {
                   ]
                 },
                 {
-                  price: "$29.99",
+                  price: "$27.00",   // updated price
                   credits: 600,
                   label: "Studio",
                   badge: "Launch Bonus",
                   bonusLabel: "+10 BONUS REVISIONS FIRST MONTH",
-                  priceId: "price_1T2Rkt1ly8rEUw05HUo3KYl1",
+                  priceId: "price_1TvG7p0IfYdAlbaartzEYmnh", // ✅ Live ID
                   featured: true,
                   includes: "Everything in Pro +",
                   features: [
@@ -321,12 +331,12 @@ export default function Checkout() {
                   ]
                 },
                 {
-                  price: "$59.99",
+                  price: "$49.99",   // updated price
                   credits: 1200,
                   label: "Enterprise",
                   badge: "Premium Tier",
                   bonusLabel: "+15 BONUS REVISIONS FIRST MONTH",
-                  priceId: "price_1T2Rmr1ly8rEUw05KumYzkLY",
+                  priceId: "price_1TvG7j0IfYdAlbaaVeUVBov0", // ✅ Live ID
                   includes: "Everything in Studio +",
                   features: [
                     "60 Monthly Revisions",
