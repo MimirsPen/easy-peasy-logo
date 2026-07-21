@@ -433,14 +433,15 @@ export function registerRoutes(
         return res.status(400).json({ error: "Missing or invalid userId" });
       }
 
+      // ✅ UPDATED: Live Price IDs with correct credit mapping
       const PRICE_CREDIT_MAP: Record<string, number> = {
-        "price_1T2Rhc1ly8rEUw056M6TKESM": 50,    // was 100
-        "price_1T2Ri91ly8rEUw05q6nojIYC": 250,   // was 500
-        "price_1T2Rib1ly8rEUw05Yi2teTxQ": 500,   // was 1000
-        "price_1T2RbA1ly8rEUw057ADvOKGW": 50,    // was 100
-        "price_1T2Rk31ly8rEUw05ow0gBcXH": 100,   // was 200
-        "price_1T2Rkt1ly8rEUw05HUo3KYl1": 300,   // was 600
-        "price_1T2Rmr1ly8rEUw05KumYzkLY": 600    // was 1200
+        "price_1TvG7n0IfYdAlbaaeFio0fDS": 50,    // Starter Pack (5 revisions)
+        "price_1TvG7o0IfYdAlbaaq4hLeJYL": 50,    // 5 revisions
+        "price_1TvG7l0IfYdAlbaawtqWABhv": 250,   // 25 revisions
+        "price_1TvG7j0IfYdAlbaaANQOBR0F": 500,   // 50 revisions
+        "price_1TvG7p0IfYdAlbaatlAQEsF7": 100,   // Pro Plan (monthly)
+        "price_1TvG7p0IfYdAlbaartzEYmnh": 300,   // Studio Plan (monthly)
+        "price_1TvG7j0IfYdAlbaaVeUVBov0": 600    // Enterprise Plan (monthly)
       };
 
       const baseCredits = PRICE_CREDIT_MAP[priceId];
