@@ -16,11 +16,11 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "api/index.ts"
+      "dest": "/api"
     },
     {
       "src": "/assets/(.*)",
-      "dest": "assets/$1"
+      "dest": "/assets/$1"
     },
     {
       "src": "/robots.txt",
@@ -32,7 +32,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "index.html"
+      "dest": "/index.html"
     }
   ]
 }
