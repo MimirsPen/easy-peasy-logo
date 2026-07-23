@@ -231,10 +231,7 @@ export default function AppPage() {
   const [showImageIntentModal, setShowImageIntentModal] = useState(false);
   const pendingIntentRef = useRef<"inspiration" | "reference">("inspiration");
   const [authModalContext, setAuthModalContext] = useState<"default" | "image" | "generation">("default");
-  const [projectList, setProjectList] = useState<{ id: string; name: string; generation_status?: string }[]>([]);
-
-  // 🔁 Ref to track which project has already triggered the intro
-  const introTriggeredForProject = useRef<string | null>(null);
+  const [projectList, setProjectList] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
     if (!authState.loading && !authState.isAuthenticated) {
@@ -249,37 +246,24 @@ export default function AppPage() {
         name: "First Brand Design",
         user_id: null as any,
         created_at: new Date().toISOString(),
-        isActive: true,
-        generation_status: 'idle',
+        isActive: true
       };
       setProject(defaultProj);
-      setProjectList([{ id: sessionId, name: defaultProj.name, generation_status: 'idle' }]);
+      setProjectList([{ id: sessionId, name: defaultProj.name }]);
     }
   }, [authState.isAuthenticated, authState.loading]);
 
   useEffect(() => {
-    // Guest mode intro logic – with fix for re‑appearing on fast navigation
     if (!authState.loading && !authState.isAuthenticated) {
       const sessionProjectId = localStorage.getItem("easypeasy_session_project_id");
       if (!sessionProjectId) return;
-
       const introKey = `easypeasy_intro_played_${sessionProjectId}`;
-      const introAlreadyPlayed = localStorage.getItem(introKey) === "true";
-      const currentProjectId = projectState.activeProject?.project_id;
-
-      // If the intro flag says it's played but there are no messages, we need to reset
-      if (introAlreadyPlayed && currentMessages.length === 0 && !introRunning && introTriggeredForProject.current !== currentProjectId) {
-        // Reset the flag so the intro runs again
-        setIntroPlayed(false);
-      } else if (introAlreadyPlayed) {
+      if (localStorage.getItem(introKey) === "true") {
         setIntroPlayed(true);
       }
-
-      if (currentMessages.length === 0 && !introPlayed && !introRunning && currentProjectId && introTriggeredForProject.current !== currentProjectId) {
-        // Run the intro
+      if (chatState.messages.length === 0 && !introPlayed && !introRunning) {
         const runIntro = async () => {
           setIntroRunning(true);
-          introTriggeredForProject.current = currentProjectId;
           await new Promise(resolve => setTimeout(resolve, 500));
           const typeText = async (text: string) => {
             setShowIntroTyping(true);
@@ -311,7 +295,7 @@ export default function AppPage() {
         runIntro();
       }
     }
-  }, [authState.isAuthenticated, authState.loading, currentMessages, introPlayed, introRunning, projectState.activeProject?.project_id]);
+  }, [authState.isAuthenticated, authState.loading]);
 
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
@@ -423,10 +407,7 @@ export default function AppPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 🆕 isGenerating based on project status and sending state
-  const isGenerating = sendingProjects[currentActiveId] ||
-                       projectState.activeProject?.generation_status === 'generating';
-
+  const isGenerating = generationState.status === 'pending' || generationState.status === 'running';
   const isSendLocked = introRunning || isGenerating || isSending;
   const isEmptyAuthenticatedProject = authState.isAuthenticated && currentMessages.length === 0;
 
@@ -562,10 +543,9 @@ export default function AppPage() {
             user_id: userState.user.user_id,
             name: project.name || "First Brand Design",
             created_at: project.created_at,
-            isActive: true,
-            generation_status: project.generation_status || 'idle',
+            isActive: true
           });
-          setProjectList([{ id: project.project_id, name: project.name || "First Brand Design", generation_status: project.generation_status || 'idle' }]);
+          setProjectList([{ id: project.project_id, name: project.name || "First Brand Design" }]);
         }
         if (guestSessionId) {
           await supabase
@@ -636,6 +616,7 @@ export default function AppPage() {
       const allImages: GeneratedImage[] = [];
       galleryData.forEach((row: any) => {
         if (row.concept_1_url) allImages.push({
+          // ✅ FINAL FIX: use logo_id directly (no fallback)
           generated_image_id: `${row.logo_id}-1`,
           project_id: row.project_id,
           url: row.concept_1_url,
@@ -652,9 +633,11 @@ export default function AppPage() {
           expires_at: new Date(Date.now() + 30 * 86400000).toISOString(),
         });
       });
+      // Replace (not append) so repeated loads never duplicate the gallery
       setImages(allImages);
 
       if (!options?.skipMessages) {
+        // Build chat bubbles ONLY for the currently active project
         const galleryMsgs: ChatMessage[] = [];
         galleryData
           .filter((row: any) => row.project_id === projectId)
@@ -664,6 +647,7 @@ export default function AppPage() {
               chat_message_id: row.id ? `gallery-${row.id}` : crypto.randomUUID(),
               project_id: projectId,
               sender: "designer",
+              // 👇 USE response_text FROM THE ROW
               content: row.response_text || "Here are your concepts.",
               created_at: row.created_at || new Date().toISOString(),
               concept_1_url: row.concept_1_url || undefined,
@@ -673,29 +657,27 @@ export default function AppPage() {
             });
           });
 
+        // Merge and sort by created_at so concept cards appear inline
         const allMessages = [...chatMessages, ...galleryMsgs].sort(
           (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
         setMessages(allMessages);
       }
 
-      const isGen = projectRowResult.data?.generation_status === "generating";
+      // Check if a generation is still in-flight
+      const isGenerating = projectRowResult.data?.generation_status === "generating";
 
-      if (isGen && !options?.skipMessages) {
+      if (isGenerating && !options?.skipMessages) {
         setSendingProjects(prev => ({ ...prev, [projectId]: true }));
+        setStatus('running');
         addSystemMessage("Creating concepts...");
-      } else if (isGen && options?.skipMessages) {
+      } else if (isGenerating && options?.skipMessages) {
         setSendingProjects(prev => ({ ...prev, [projectId]: true }));
-      } else if (!isGen && !options?.skipMessages) {
+        setStatus('running');
+      } else if (!isGenerating && !options?.skipMessages) {
         setSendingProjects(prev => { const n = { ...prev }; delete n[projectId]; return n; });
+        setStatus('idle');
       }
-
-      // Update project list with current status
-      setProjectList(prev =>
-        prev.map(p =>
-          p.id === projectId ? { ...p, generation_status: projectRowResult.data?.generation_status || 'idle' } : p
-        )
-      );
 
       if (!options?.skipScroll) {
         setTimeout(() => {
@@ -706,9 +688,10 @@ export default function AppPage() {
         }, 50);
       }
 
-      return isGen;
+      return isGenerating;
     };
 
+    // --- Supabase Realtime subscription for generation status ---
     if (realtimeChannelRef.current) {
       supabase.removeChannel(realtimeChannelRef.current);
       realtimeChannelRef.current = null;
@@ -728,21 +711,13 @@ export default function AppPage() {
           if (payload.new.generation_status === 'completed') {
             console.log('[Realtime] Generation completed for project', projectId);
             
+            // 👇 CLEAR THE TIMEOUT RIGHT HERE
             if (genTimeoutRef.current) {
               clearTimeout(genTimeoutRef.current);
               genTimeoutRef.current = null;
             }
 
-            // Update local project status to 'idle'
-            setProject({
-              ...projectState.activeProject,
-              generation_status: 'idle'
-            });
-            setProjectList(prev =>
-              prev.map(p =>
-                p.id === projectId ? { ...p, generation_status: 'idle' } : p
-              )
-            );
+            setStatus('idle');
             stopLoadingTimer();
             setSendingProjects(prev => { const n = { ...prev }; delete n[projectId]; return n; });
             loadHistory({ skipScroll: false });
@@ -753,6 +728,7 @@ export default function AppPage() {
 
     realtimeChannelRef.current = channel;
 
+    // Initial load
     loadHistory();
 
     return () => {
@@ -771,18 +747,14 @@ export default function AppPage() {
     setProjectModalOpen(true);
   };
 
-  const activateProject = (proj: { id: string; name: string; generation_status?: string }) => {
-    const status = proj.generation_status || 'idle';
+  const activateProject = (proj: { id: string; name: string }) => {
     setProject({
       project_id: proj.id,
       user_id: userState.user?.user_id || "anonymous",
       name: proj.name,
       created_at: new Date().toISOString(),
-      isActive: true,
-      generation_status: status,
+      isActive: true
     });
-    // Reset intro trigger for the new project so intro can re-run if needed
-    introTriggeredForProject.current = null;
     setSearch("");
     setIsSearchOpen(false);
     requestAnimationFrame(() => {
@@ -830,10 +802,9 @@ export default function AppPage() {
         user_id: userState.user?.user_id || 'anonymous',
         name: trimmedName,
         created_at: data.created_at,
-        isActive: true,
-        generation_status: 'idle',
+        isActive: true
       });
-      setProjectList(prev => [...prev, { id, name: trimmedName, generation_status: 'idle' }]);
+      setProjectList(prev => [...prev, { id, name: trimmedName }]);
       setMessages([]);
       setProjectModalOpen(false);
       setNewProjectName("");
@@ -855,10 +826,11 @@ export default function AppPage() {
         if (!error && data) {
           const list = data.map(p => ({
             id: p.project_id,
-            name: p.name,
-            generation_status: p.generation_status || 'idle',
+            name: p.name
           }));
-          setProjectList(list);
+          if (list.length > 0 || projectList.length === 0) {
+            setProjectList(list);
+          }
           if (!projectState.activeProject && list.length > 0) {
             const first = data[0];
             setProject({
@@ -866,8 +838,7 @@ export default function AppPage() {
               user_id: first.user_id,
               name: first.name,
               created_at: first.created_at,
-              isActive: true,
-              generation_status: first.generation_status || 'idle',
+              isActive: true
             });
           } else if (list.length === 0) {
             setProject(null);
@@ -939,6 +910,7 @@ export default function AppPage() {
       return;
     }
     if (!input.trim() || isSendLocked) return;
+    // 👇 BLOCK SEND IF IMAGE IS STILL UPLOADING
     if (isCloudinaryUploading) return;
     
     setSendingProjects(prev => ({ ...prev, [currentActiveId]: true }));
@@ -971,8 +943,7 @@ export default function AppPage() {
         ...prev,
         {
           id: data.project_id,
-          name: data.name,
-          generation_status: 'idle'
+          name: data.name
         }
       ]);
       setProject({
@@ -980,8 +951,7 @@ export default function AppPage() {
         user_id: userState.user?.user_id ?? "anonymous",
         name: data.name,
         created_at: data.created_at,
-        isActive: true,
-        generation_status: 'idle',
+        isActive: true
       });
       setSendingProjects(prev => ({ ...prev, [data.project_id]: true }));
       setIsCreatingProject(false);
@@ -998,6 +968,7 @@ export default function AppPage() {
       created_at: new Date().toISOString()
     };
     const currentAttachments = [...attachedImageUrls];
+    const currentRawFile = attachedRawFile;
     const messageText = input;
     addMessage({
       ...userMsg,
@@ -1045,6 +1016,7 @@ export default function AppPage() {
       formData.append("message", messageText);
       formData.append("attachedImage", currentAttachments[0] || "");
       formData.append("imageUsage", currentAttachments[0] ? (activeImageUsage || "") : "");
+      // Removed the raw file append – n8n will fetch from the Cloudinary URL
       startLoadingTimer();
       const fetchUrl = `/api/generate-logo?sessionId=${encodeURIComponent(sessionId ?? "")}&projectId=${encodeURIComponent(resolvedProjectId)}`;
       const res = await fetch(fetchUrl, {
@@ -1068,30 +1040,12 @@ export default function AppPage() {
       if (data.status === "generation_started" || data.status === "starting_generation") {
         handedOffToRealtime = true;
         activeGenerationProjectIdRef.current = projectId;
-        // Update project status immediately so dots appear
-        setProject({
-          ...projectState.activeProject,
-          generation_status: "generating"
-        });
-        setProjectList(prev =>
-          prev.map(p =>
-            p.id === projectId ? { ...p, generation_status: 'generating' } : p
-          )
-        );
+        setStatus("running");
         addSystemMessage("Creating concepts...");
         if (genTimeoutRef.current) clearTimeout(genTimeoutRef.current);
         genTimeoutRef.current = setTimeout(() => {
           setGenError("Generation timed out. Please try again.");
-          // Reset project status on timeout
-          setProject({
-            ...projectState.activeProject,
-            generation_status: 'idle'
-          });
-          setProjectList(prev =>
-            prev.map(p =>
-              p.id === projectId ? { ...p, generation_status: 'idle' } : p
-            )
-          );
+          setStatus("idle");
           stopLoadingTimer();
           const pid = activeGenerationProjectIdRef.current;
           if (pid) setSendingProjects(prev => { const n = { ...prev }; delete n[pid]; return n; });
@@ -1147,6 +1101,7 @@ export default function AppPage() {
       const hasConceptUrls = data.concept_1_url || data.concept_2_url;
       const hasLegacyImages = data.status === "generation_complete" && data.images && data.images.length > 0;
       if (hasConceptUrls || hasLegacyImages) {
+        setStatus('idle');
         stopLoadingTimer();
         let newImages: GeneratedImage[] = [];
         if (hasConceptUrls) {
@@ -1177,17 +1132,6 @@ export default function AppPage() {
           setViewerOpen(true);
           setArchiveOpen(false);
         }
-        // Generation is complete, reset status
-        setProject({
-          ...projectState.activeProject,
-          generation_status: 'idle'
-        });
-        setProjectList(prev =>
-          prev.map(p =>
-            p.id === projectId ? { ...p, generation_status: 'idle' } : p
-          )
-        );
-        setSendingProjects(prev => { const n = {...prev}; delete n[projectId!]; return n; });
       }
       if (data.creditsRemaining !== undefined) {
         setCredits(data.creditsRemaining);
@@ -1911,6 +1855,7 @@ export default function AppPage() {
                   <Shield className="w-3 h-3" /> Click image to view in gallery · {viewerIndex + 1} of {viewerImages.length}
                 </p>
               </div>
+              {/* ✅ Updated Download button – only scale and brightness, no flash */}
               <Button 
                 className="rounded-full hover:scale-105 hover:brightness-110 transition-transform duration-200" 
                 onClick={() => {
@@ -2056,8 +2001,10 @@ export default function AppPage() {
               <Button
                 onClick={handleCreateProject}
                 disabled={isCreatingProject || !newProjectName.trim()}
-                className={`relative min-w-[100px] bg-primary text-white font-bold transition-all duration-160
-                  ${!newProjectName.trim() || isCreatingProject ? 'opacity-45 cursor-not-allowed' : 'hover:-translate-y-px hover:shadow-[0_0_0_1px_rgba(124,58,237,0.4),0_6px_18px_rgba(124,58,237,0.25)] active:translate-y-0 active:shadow-sm'}`}
+                className={`
+                  relative min-w-[100px] bg-primary text-white font-bold transition-all duration-160
+                  ${!newProjectName.trim() || isCreatingProject ? 'opacity-45 cursor-not-allowed' : 'hover:-translate-y-px hover:shadow-[0_0_0_1px_rgba(124,58,237,0.4),0_6px_18px_rgba(124,58,237,0.25)] active:translate-y-0 active:shadow-sm'}
+                `}
               >
                 {isCreatingProject ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
