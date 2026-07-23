@@ -408,7 +408,7 @@ export default function AppPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ✅ UPDATED: use project's generation_status for thinking dots
+  // isGenerating uses DB status (which we now update optimistically)
   const isGenerating = sendingProjects[currentActiveId] ||
                        projectState.activeProject?.generation_status === 'generating';
 
@@ -972,6 +972,34 @@ export default function AppPage() {
       setSendingProjects(prev => { const n = {...prev}; delete n[currentActiveId]; return n; });
       return;
     }
+
+    // ============================================================
+    //  🔥 OPTIMISTIC DB UPDATE – set status to 'generating'
+    //  This happens BEFORE we even send the fetch, so the dots appear
+    //  immediately and persist across navigation.
+    // ============================================================
+    try {
+      await supabase
+        .from("projects")
+        .update({ generation_status: "generating" })
+        .eq("project_id", projectId);
+      console.log("[generation] Optimistic update: status set to generating");
+    } catch (dbErr) {
+      console.warn("[generation] Failed to set status optimistically:", dbErr);
+    }
+
+    // Update local state
+    setProject({
+      ...projectState.activeProject,
+      generation_status: "generating"
+    });
+    setProjectList(prev =>
+      prev.map(p =>
+        p.id === projectId ? { ...p, generation_status: 'generating' } : p
+      )
+    );
+
+    // Then send the actual message to n8n
     const userMsg: ChatMessage = {
       chat_message_id: crypto.randomUUID(),
       project_id: projectId,
@@ -1047,54 +1075,10 @@ export default function AppPage() {
         concept_2_title?: string;
         concept_2_url?: string;
       } = await res.json();
-      if (data.status === "generation_started" || data.status === "starting_generation") {
-        handedOffToRealtime = true;
-        activeGenerationProjectIdRef.current = projectId;
-        
-        // ✅ FIX: update database status to 'generating'
-        try {
-          await supabase
-            .from("projects")
-            .update({ generation_status: "generating" })
-            .eq("project_id", projectId);
-          console.log("[generation] Updated project status to generating in DB");
-        } catch (dbErr) {
-          console.warn("[generation] Failed to update status in DB:", dbErr);
-        }
-
-        // Update local state
-        setProject({
-          ...projectState.activeProject,
-          generation_status: "generating"
-        });
-        setProjectList(prev =>
-          prev.map(p =>
-            p.id === projectId ? { ...p, generation_status: 'generating' } : p
-          )
-        );
-        addSystemMessage("Creating concepts...");
-        if (genTimeoutRef.current) clearTimeout(genTimeoutRef.current);
-        genTimeoutRef.current = setTimeout(() => {
-          setGenError("Generation timed out. Please try again.");
-          // Reset project status on timeout
-          setProject({
-            ...projectState.activeProject,
-            generation_status: 'idle'
-          });
-          setProjectList(prev =>
-            prev.map(p =>
-              p.id === projectId ? { ...p, generation_status: 'idle' } : p
-            )
-          );
-          stopLoadingTimer();
-          const pid = activeGenerationProjectIdRef.current;
-          if (pid) setSendingProjects(prev => { const n = { ...prev }; delete n[pid]; return n; });
-          activeGenerationProjectIdRef.current = null;
-          genTimeoutRef.current = null;
-          setTimeout(() => inputRef.current?.focus(), 0);
-        }, 300_000);
-        return;
-      }
+      
+      // --- We no longer need to handle "generation_started" because we already set the status optimistically.
+      // --- The timeout will reset it if something goes wrong.
+      
       if (data.trigger_modal === "signup_required") {
         const assistantMsg: ChatMessage = {
           chat_message_id: crypto.randomUUID(),
@@ -1106,6 +1090,14 @@ export default function AppPage() {
         addMessage(assistantMsg);
         setAuthModalContext("generation");
         setAuthModalOpen(true);
+        // Reset status because generation didn't actually start
+        try {
+          await supabase
+            .from("projects")
+            .update({ generation_status: "idle" })
+            .eq("project_id", projectId);
+          console.log("[generation] Reset status to idle (signup required)");
+        } catch (dbErr) { /* ignore */ }
         return;
       }
       const assistantMsg: ChatMessage = {
@@ -1171,6 +1163,14 @@ export default function AppPage() {
           setViewerOpen(true);
           setArchiveOpen(false);
         }
+        // Generation completed immediately (sync case) – reset status
+        try {
+          await supabase
+            .from("projects")
+            .update({ generation_status: "idle" })
+            .eq("project_id", projectId);
+          console.log("[generation] Reset status to idle (sync completion)");
+        } catch (dbErr) { /* ignore */ }
         setProject({
           ...projectState.activeProject,
           generation_status: 'idle'
@@ -1193,6 +1193,23 @@ export default function AppPage() {
         setGenError("Failed to reach designer. Please try again.");
         setStatus('idle');
         stopLoadingTimer();
+        // Reset status on fetch error
+        try {
+          await supabase
+            .from("projects")
+            .update({ generation_status: "idle" })
+            .eq("project_id", projectId);
+          console.log("[generation] Reset status to idle (fetch error)");
+        } catch (dbErr) { /* ignore */ }
+        setProject({
+          ...projectState.activeProject,
+          generation_status: 'idle'
+        });
+        setProjectList(prev =>
+          prev.map(p =>
+            p.id === projectId ? { ...p, generation_status: 'idle' } : p
+          )
+        );
       }
     } finally {
       if (!handedOffToRealtime) {
