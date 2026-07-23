@@ -607,8 +607,6 @@ export default function AppPage() {
           .single(),
       ]);
 
-      console.log("[DB] loadHistory: fetched generation_status for project", projectId, "=", projectRowResult.data?.generation_status);
-
       const galleryData = galleryResult.data || [];
       if (galleryResult.error) {
         console.error("Error loading logo_gallery:", galleryResult.error);
@@ -955,7 +953,8 @@ export default function AppPage() {
     }
 
     // ============================================================
-    // 🔥 OPTIMISTIC DB UPDATE WITH LOGGING
+    // 🔥 OPTIMISTIC DB UPDATE – set status to 'generating'
+    // This runs BEFORE the fetch, so the DB knows a generation is running.
     // ============================================================
     console.log("[DB] Starting optimistic update for project:", projectId);
     console.log("[DB] Current user:", userState.user?.user_id || "guest");
@@ -978,9 +977,8 @@ export default function AppPage() {
     } catch (err) {
       console.error("[DB] Optimistic update threw an exception:", err);
     }
-    // ============================================================
 
-    // Update local state
+    // Update local state to reflect the change
     setProject({
       ...projectState.activeProject,
       generation_status: "generating"
@@ -1170,29 +1168,6 @@ export default function AppPage() {
         stopLoadingTimer();
       }
     } finally {
-      // ============================================================
-      // 🔥 RESET DB STATUS WITH LOGGING
-      // ============================================================
-      if (!handedOffToRealtime) {
-        console.log("[DB] Resetting generation_status to idle for project:", projectId);
-        try {
-          const { error: resetError } = await supabase
-            .from("projects")
-            .update({ generation_status: "idle" })
-            .eq("project_id", projectId);
-          if (resetError) {
-            console.error("[DB] Reset FAILED:", resetError);
-          } else {
-            console.log("[DB] Reset SUCCESSFUL");
-          }
-        } catch (err) {
-          console.error("[DB] Reset threw exception:", err);
-        }
-      } else {
-        console.log("[DB] Skipped reset because generation was handed off to Realtime");
-      }
-      // ============================================================
-
       if (!handedOffToRealtime) {
         if (projectId) setSendingProjects(prev => { const n = {...prev}; delete n[projectId!]; return n; });
         setTimeout(() => inputRef.current?.focus(), 0);
