@@ -659,16 +659,16 @@ export default function AppPage() {
         setMessages(allMessages);
       }
 
-      const isGenerating = projectRowResult.data?.generation_status === "generating";
+      const isGen = projectRowResult.data?.generation_status === "generating";
 
-      if (isGenerating && !options?.skipMessages) {
+      if (isGen && !options?.skipMessages) {
         setSendingProjects(prev => ({ ...prev, [projectId]: true }));
         setStatus('running');
         addSystemMessage("Creating concepts...");
-      } else if (isGenerating && options?.skipMessages) {
+      } else if (isGen && options?.skipMessages) {
         setSendingProjects(prev => ({ ...prev, [projectId]: true }));
         setStatus('running');
-      } else if (!isGenerating && !options?.skipMessages) {
+      } else if (!isGen && !options?.skipMessages) {
         setSendingProjects(prev => { const n = { ...prev }; delete n[projectId]; return n; });
         setStatus('idle');
       }
@@ -682,7 +682,7 @@ export default function AppPage() {
         }, 50);
       }
 
-      return isGenerating;
+      return isGen;
     };
 
     // --- Supabase Realtime subscription for generation status ---
@@ -954,7 +954,6 @@ export default function AppPage() {
 
     // ============================================================
     // 🔥 OPTIMISTIC DB UPDATE – set status to 'generating'
-    // This runs BEFORE the fetch, so the DB knows a generation is running.
     // ============================================================
     console.log("[DB] Starting optimistic update for project:", projectId);
     console.log("[DB] Current user:", userState.user?.user_id || "guest");
@@ -1075,6 +1074,7 @@ export default function AppPage() {
           genTimeoutRef.current = null;
           setTimeout(() => inputRef.current?.focus(), 0);
         }, 300_000);
+        // Do NOT reset DB status here – callback will handle it
         return;
       }
       if (data.trigger_modal === "signup_required") {
@@ -1088,6 +1088,14 @@ export default function AppPage() {
         addMessage(assistantMsg);
         setAuthModalContext("generation");
         setAuthModalOpen(true);
+        // Reset status because generation didn't actually start
+        try {
+          await supabase
+            .from("projects")
+            .update({ generation_status: "idle" })
+            .eq("project_id", projectId);
+          console.log("[DB] Reset status to idle (signup required)");
+        } catch (dbErr) { /* ignore */ }
         return;
       }
       const assistantMsg: ChatMessage = {
@@ -1154,6 +1162,19 @@ export default function AppPage() {
           setViewerOpen(true);
           setArchiveOpen(false);
         }
+        // Generation completed immediately (sync case) – reset status
+        try {
+          await supabase
+            .from("projects")
+            .update({ generation_status: "idle" })
+            .eq("project_id", projectId);
+          console.log("[DB] Reset status to idle (sync completion)");
+        } catch (dbErr) { /* ignore */ }
+        setProject({
+          ...projectState.activeProject,
+          generation_status: 'idle'
+        });
+        setSendingProjects(prev => { const n = {...prev}; delete n[projectId!]; return n; });
       }
       if (data.creditsRemaining !== undefined) {
         setCredits(data.creditsRemaining);
@@ -1166,12 +1187,42 @@ export default function AppPage() {
         setGenError("Failed to reach designer. Please try again.");
         setStatus('idle');
         stopLoadingTimer();
+        // Reset status on fetch error
+        try {
+          await supabase
+            .from("projects")
+            .update({ generation_status: "idle" })
+            .eq("project_id", projectId);
+          console.log("[DB] Reset status to idle (fetch error)");
+        } catch (dbErr) { /* ignore */ }
+        setProject({
+          ...projectState.activeProject,
+          generation_status: 'idle'
+        });
+        setSendingProjects(prev => { const n = {...prev}; delete n[projectId!]; return n; });
       }
     } finally {
+      // ============================================================
+      // 🔥 RESET FOR NORMAL CHAT REPLIES (not handed off)
+      // ============================================================
       if (!handedOffToRealtime) {
+        console.log("[DB] Resetting generation_status to idle (normal reply)");
+        setStatus('idle');
+        try {
+          await supabase
+            .from("projects")
+            .update({ generation_status: "idle" })
+            .eq("project_id", projectId);
+          console.log("[DB] Reset SUCCESSFUL");
+        } catch (dbErr) {
+          console.warn("[DB] Reset FAILED:", dbErr);
+        }
         if (projectId) setSendingProjects(prev => { const n = {...prev}; delete n[projectId!]; return n; });
         setTimeout(() => inputRef.current?.focus(), 0);
+      } else {
+        console.log("[DB] Skipped reset – generation handed off to Realtime");
       }
+      // ============================================================
     }
   };
 
