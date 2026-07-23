@@ -1050,6 +1050,19 @@ export default function AppPage() {
       if (data.status === "generation_started" || data.status === "starting_generation") {
         handedOffToRealtime = true;
         activeGenerationProjectIdRef.current = projectId;
+        
+        // ✅ FIX: update database status to 'generating'
+        try {
+          await supabase
+            .from("projects")
+            .update({ generation_status: "generating" })
+            .eq("project_id", projectId);
+          console.log("[generation] Updated project status to generating in DB");
+        } catch (dbErr) {
+          console.warn("[generation] Failed to update status in DB:", dbErr);
+        }
+
+        // Update local state
         setProject({
           ...projectState.activeProject,
           generation_status: "generating"
@@ -1063,6 +1076,7 @@ export default function AppPage() {
         if (genTimeoutRef.current) clearTimeout(genTimeoutRef.current);
         genTimeoutRef.current = setTimeout(() => {
           setGenError("Generation timed out. Please try again.");
+          // Reset project status on timeout
           setProject({
             ...projectState.activeProject,
             generation_status: 'idle'
