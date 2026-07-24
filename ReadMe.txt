@@ -11,15 +11,15 @@ The entire system is pre‑configured and ready to run – you just need to conn
 
 | Service | Purpose | Your Responsibility | What I Send / Transfer |
 |---------|---------|---------------------|-------------------------|
-| **Google Cloud VM** | Hosts n8n (workflow automation) | You create your own VM (or any VPS). | I give you the exact n8n startup commands and docker-compose.yml file. |
+| **Google Cloud VM** | Hosts n8n (workflow automation) | You create your own VM (or any VPS). | I give you the exact n8n docker-compose.yml file. |
 | **Supabase** | Database + Auth | You create your own project. | **I send the whole project over to your Supabase account** – you simply make an account and I transfer it. All SQL schemas (including PG Cron) and RLS policies are already applied. |
-| **Upstash Redis** | State storage for n8n queue | You create your own Upstash instance. | You add your Redis credentials into the n8n environment variables (`N8N_REDIS_HOST`, `PORT`, `PASSWORD`). |
-| **Cloudinary** | Image hosting | You create your own account. | I provide the exact environment variable names – you add them yourself in Vercel and n8n. |
+| **Upstash Redis** | State storage for n8n queue | You create your own Upstash instance. | You add your Redis credentials into the n8n environment variables. |
+| **Cloudinary** | Image hosting | You create your own account. | I provide the exact environment variable names – you add them in Vercel and n8n. |
 | **Stripe (Live)** | Payments & subscriptions | You create your own Stripe account. | **I send over a fully configured Stripe setup** – webhooks, products, price IDs – already done. You only need to update your bank details. |
-| **kie.ai** | Image generation | You create your own account and add prepaid credits (this is a paid API). | I provide the exact n8n HTTP node configuration – you paste your API key into the credential fields. |
-| **xAI Grok API** | AI chat | You create your own account and add prepaid credits / billing (this is a paid API). | The workflow is ready – you just paste your API key into the credential fields. |
+| **kie.ai** | Image generation | You create your own account and add prepaid credits (paid API). | I provide the exact n8n HTTP node configuration – you paste your API key. |
+| **xAI Grok API** | AI chat | You create your own account and add prepaid credits (paid API). | The workflow is ready – you just paste your API key. |
 | **NameCheap** | Domain (`easypeasylogo.com`) | You create your own NameCheap account (or give me access). | **I transfer the domain** to your NameCheap account – you own it permanently. |
-| **n8n (open‑source)** | Workflow automation (self‑hosted on your VM) | You install Docker and run n8n on your VM. | I send the complete workflow JSON + docker-compose.yml template. Concurrency is set to 20 for an E2‑standard 4‑vCPU server. If you choose a stronger server, multiply concurrency by +5 per additional vCPU. |
+| **n8n (open‑source)** | Workflow automation (self‑hosted on your VM) | You install Docker and run n8n on your VM. | I send the complete workflow JSON + docker-compose.yml template. Concurrency is set to 20 for an E2‑standard 4‑vCPU server. |
 | **Vercel** | Frontend + API hosting | You create your own Vercel account and connect your GitHub repo. | I send the full source code and a `.env.example` file with all required environment variables. |
 
 
@@ -29,13 +29,13 @@ The entire system is pre‑configured and ready to run – you just need to conn
 
 | Service | Free Tier | Cost After Free Tier | Notes |
 |---------|-----------|----------------------|-------|
-| **Google Cloud VM** (e2-standard-4) | **$300 free credits** (new accounts, lasts ~3 months) | **~$68 – $98/month** | Choose cheaper regions like `us-central1` or use committed use discounts to lower cost. |
-| **Cloudinary** | **25 credits/month** (free forever) | **$89 – $99/month** (Plus plan, 225 credits) | Your usage is very low – only storing and passing image URLs. The free tier will last a long time. |
-| **Upstash Redis** | **10,000 commands/day** OR **500K commands/month**, **256MB storage** | **$0.20 / 100K extra commands** | Free tier is more than enough for text data (chat summaries, counters). |
-| **Supabase** | **500MB database**, **1GB storage**, **50K monthly active users** | Database storage ~**$0.021/GB/month** | Very generous free tier. You'll likely stay free for a long time. |
+| **Google Cloud VM** (e2-standard-4) | **$300 free credits** (new accounts, lasts ~3 months) | **~$68 – $120/month** | Choose cheaper regions like `us-central1`. |
+| **Cloudinary** | **25 credits/month** (free forever) | **$89 – $99/month** (Plus plan) | Your usage is very low – free tier lasts long. |
+| **Upstash Redis** | **10,000 commands/day** OR **500K commands/month**, **256MB storage** | **$0.20 / 100K extra commands** | Free tier is more than enough. |
+| **Supabase** | **500MB database**, **1GB storage**, **50K monthly active users** | Database storage ~**$0.021/GB/month** | Very generous free tier. |
 
 **Fixed Cost Summary:**  
-Your main fixed cost is the **Google Cloud VM**. With the **$300 free credit**, you get **~3 months of free hosting** – so you can start with zero fixed costs.
+Your main fixed cost is the **Google Cloud VM**. With the **$300 free credit**, you get **~3 months of free hosting**.
 
 ### Per-Revision Cost (Variable)
 
@@ -65,14 +65,14 @@ Each revision costs you **~$0.08–$0.18** in direct API costs. Grok is negligib
 
 | Insight | Explanation |
 |---------|-------------|
-| **High margins** | You keep **~78–91%** of every sale. Costs are very low. |
-| **Free tiers cover you** | Cloudinary, Supabase, Upstash, and Google Cloud free credits mean you can launch with near-zero costs. |
-| **Free messages are a lead gen tool** | The 10 free guest messages cost almost nothing (Grok is cheap) but attract paying customers. |
-| **Suffer from success** | Even if you get thousands of users, the per-revision cost stays low, so you profit as you scale. |
+| **High margins** | You keep **~78–91%** of every sale. |
+| **Free tiers cover you** | Cloudinary, Supabase, Upstash, and Google Cloud free credits mean near-zero launch costs. |
+| **Free messages are a lead gen tool** | The 10 free guest messages cost almost nothing but attract paying customers. |
+| **Suffer from success** | Even with thousands of users, per-revision costs stay low. |
 
 **Example:**  
 - **One Pro subscriber ($13.99/month)** = **~$12.19 profit** in the first month.  
-- **10 Pro subscribers** = **~$122/month profit** – easily covers VM costs + API costs.  
+- **10 Pro subscribers** = **~$122/month profit** – easily covers VM costs.  
 - **100 Pro subscribers** = **~$1,219/month profit** – very scalable.
 
 
@@ -81,60 +81,41 @@ Each revision costs you **~$0.08–$0.18** in direct API costs. Grok is negligib
 You have **two options** to get this system live:
 
 ### Option A – White‑Glove Setup (Recommended, $200 extra)
-- You provide a **dedicated Gmail account** (or create a new one).
+- You provide a **dedicated Gmail account** (recommend creating a new one – you get $300 free Google Cloud credits).
 - I log in once and set up **every service** for you:
-  - I create your Supabase project and run all SQL schemas (including PG Cron).
-  - I create your Upstash Redis, Cloudinary, and kie.ai accounts (or you provide the API keys and I insert them).
-  - I set up Stripe (Live) – webhooks, products, price IDs – and connect it to your account.
-  - I deploy the code to Vercel and set all environment variables (see full list below).
-  - I install n8n on your VM and import the workflow (with concurrency tuned for your chosen VM size).
-  - I transfer the domain `easypeasylogo.com` to your NameCheap account.
-  - I verify the entire website works correctly before handing it over – so you feel 100% safe.
+  - Supabase project + SQL schemas (including PG Cron).
+  - Upstash Redis, Cloudinary, and kie.ai accounts (or you provide API keys and I insert them).
+  - Stripe (Live) – webhooks, products, price IDs – connected to your account.
+  - Vercel deployment with all environment variables.
+  - n8n on your VM (import workflow, set concurrency).
+  - Domain transfer to your NameCheap account.
+  - Full verification – you receive a completely working system.
 
 **🔥 Special Value:**  
-With a brand new Gmail account, you are eligible for **$300 in free Google Cloud credits** (valid for 3 months). This free credit fully covers the VM hosting costs during your initial launch period.  
-By investing just **$200** for the white‑glove setup, you get a live, revenue‑generating system up and running *immediately*, all while utilising these free cloud credits. Compared to hiring a developer or spending weeks configuring everything yourself, this is a bargain.
-
-- You receive a **completely working system** – just update your Stripe bank details and start selling.
+With a brand new Gmail account, you are eligible for **$300 in free Google Cloud credits** (valid for 3 months). By investing just **$200** for the white‑glove setup, you get a live, revenue‑generating system up and running immediately.
 
 ### Option B – Self‑Setup (for technical buyers, no extra fee)
-- You create your own accounts for each service (Supabase, Upstash, Cloudinary, kie.ai, xAI, Stripe, NameCheap, Vercel, and a VM).
-- I provide you with **everything you need** to plug them together:
-  - The complete source code (this repository).
-  - The n8n workflow JSON (ready to import).
-  - A `docker-compose.yml` template (with concurrency set to 20 for a 4‑vCPU server; adjust based on the +5 concurrency of users per vCPU rule).
-  - A full list of the exact environment variable names (see below).
-  - Step‑by‑step instructions for inserting your API keys and deploying.
-- You are responsible for setting up your VM, n8n locally, and DNS records.
+- You create your own accounts for each service.
+- I provide you with **everything you need**:
+  - Complete source code (this repository).
+  - n8n workflow JSON (ready to import).
+  - `docker-compose.yml` template (concurrency 20).
+  - Full list of environment variables (see below).
+  - Step‑by‑step setup guide in the `handover/` folder.
+- You are responsible for setting up your VM, n8n, and DNS records.
 
 
-## Google OAuth Setup (For Login – Option B)
+## Google OAuth Setup – Quick Overview
 
-The platform uses "Sign in with Google". To enable this, you must configure OAuth credentials:
+The platform uses "Sign in with Google". This requires:
+1. Creating OAuth credentials in Google Cloud Console.
+2. Adding the Supabase callback URL to the credentials.
+3. Pasting the Client ID and Secret into Supabase → Authentication → Providers → Google.
 
-1. **Create a Google Cloud Project** – go to console.cloud.google.com and create a new project.
-2. **Enable the Google+ API** – search for "Google+ API" and enable it.
-3. **Create OAuth 2.0 Client ID**:
-   - Go to **APIs & Services → Credentials**.
-   - Click **Create Credentials → OAuth client ID**.
-   - Application type: **Web application**.
-   - Under **Authorized redirect URIs**, add:
-https://<YOUR-SUPABASE-REF>.supabase.co/auth/v1/callback
-
-text
-*(You can find your Supabase ref in your Supabase project URL: `https://<YOUR-SUPABASE-REF>.supabase.co`)*
-4. **Copy the Client ID and Client Secret**.
-5. **In Supabase Dashboard**:
-- Go to **Authentication → Providers → Google**.
-- Toggle **Enable**.
-- Paste the Client ID and Client Secret.
-- Click **Save**.
-6. **Set the Site URL** in Supabase:
-- Go to **Authentication → URL Configuration**.
-- Set **Site URL** to `https://easypeasylogo.com` (or your domain).
+**Full step‑by‑step instructions are included in the `handover/` setup guide.**
 
 
-## Exact Environment Variables (for Option B – Vercel)
+## Exact Environment Variables (for Vercel)
 
 You need to create these variables in your Vercel project dashboard (under **Settings → Environment Variables**). Add them for **Production** and **Preview** environments.
 
@@ -149,127 +130,3 @@ STRIPE_WEBHOOK_SECRET
 STRIPE_SECRET_KEY
 SESSION_SECRET
 VITE_SUPABASE_URL
-Where to get each value:
-
-VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY → From your Supabase project (Settings → API).
-
-VITE_CLOUDINARY_CLOUD_NAME / VITE_CLOUDINARY_PRESET → From your Cloudinary dashboard.
-
-VITE_STRIPE_PUBLIC_KEY / STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET → From your Stripe dashboard (Developers → API Keys, and Webhooks).
-
-SESSION_SECRET → Generate a strong random string (e.g., openssl rand -base64 32).
-
-VITE_API_BASE_URL → The public URL of your n8n instance (e.g., https://api.easypeasylogo.com). This is where the frontend sends chat requests.
-
-Exact Credentials for n8n (for Option B)
-In your n8n instance, you need to create the following credentials (under Credentials → Add Credential) and link them to the imported workflow nodes:
-
-Service	Credential Type	What you need to provide
-xAI Grok	API Key (custom header)	Your xAI API key (you must add prepaid credits to your xAI account).
-kie.ai	API Key (custom header)	Your kie.ai API key (you must add prepaid credits to your kie.ai account). Note: This is added in the HTTP node, not in the credentials section.
-Cloudinary	Cloudinary API	Cloud Name, API Key, API Secret (found in your Cloudinary dashboard).
-Upstash Redis	(Set in docker‑compose environment)	Redis Host, Port, Password (from your Upstash dashboard).
-What I Send Over (Regardless of Option)
-Item	Format
-Domain (easypeasylogo.com)	Transferred to your NameCheap account (full ownership).
-Stripe configuration	Fully configured – webhooks, products, price IDs – all done. You only update your bank details.
-Supabase	The whole project is transferred to your account – you don't need to run any SQL.
-n8n workflow	JSON export – import directly into your n8n instance.
-docker‑compose.yml	Pre‑configured with concurrency 20 (adjustable) and Redis placeholders.
-Full source code	React + Node.js – deploy to Vercel with one click.
-Environment variable template	All keys and values explained – just fill in your own API credentials.
-Folder Structure (Important Files)
-text
-easy-peasy-logo/
-├── client/                 # React frontend (Vite + Tailwind)
-├── api/                    # Vercel serverless functions
-├── handover/               # ⭐ Everything you need to get started
-│   ├── n8n-workflow.json   # The designer-chat workflow (import this)
-│   └── docker-compose.yml  # Pre‑configured with concurrency 20
-├── attached_assets/        # Images and assets
-├── scripts/                # Build and helper scripts
-├── ReadMe.txt              # This file
-└── ... other config files
-n8n – Quick Start (Option B)
-1. Install Docker on your VM
-bash
-sudo apt update && sudo apt install docker.io docker-compose -y
-2. Create a folder and use the provided docker-compose.yml
-bash
-mkdir ~/n8n && cd ~/n8n
-nano docker-compose.yml
-Copy the template from the handover/ folder.
-Important: Set WEBHOOK_URL to https://api.easypeasylogo.com and add your Redis credentials (Host, Port, Password).
-
-3. Start n8n
-bash
-docker-compose up -d
-4. Set up your admin account
-Open https://api.easypeasylogo.com (or your VM's public IP) in your browser.
-
-First, promote your VM's external IP to a static IP in Google Cloud Console (Compute Engine → External IP Addresses → Reserve Static Address).
-
-Add a DNS A record in NameCheap for api → point it to your static IP.
-
-Then fill in the "Set up owner account" form (Email, Name, Password). This creates your n8n login.
-
-5. Import the workflow and add API keys
-Go to Workflows → Import from File → select handover/n8n-workflow.json.
-
-Go to Credentials → add:
-
-xAI Grok (API Key)
-
-Cloudinary (Cloud Name, API Key, API Secret)
-
-For kie.ai: The API key is added inside the HTTP node directly (not in the credentials section) – you'll see the field in the node.
-
-Go through the workflow and fill in all red fields (where credentials are missing). A video is included in the handover/ folder showing exactly where each key goes.
-
-6. Update Vercel
-Set VITE_API_BASE_URL to https://api.easypeasylogo.com.
-
-Domain – easypeasylogo.com (Included)
-The domain easypeasylogo.com is included in this sale. It is a premium, brandable domain already registered with NameCheap.
-
-Option A: I handle the full transfer to your NameCheap account and configure all DNS records (root, api, www) to point to your servers.
-
-Option B: I transfer the domain to your NameCheap account. You will need to set the DNS records yourself:
-
-Point the root (@) and www to your Vercel deployment.
-
-Point the api subdomain to your n8n VM public IP address (after you've made it static).
-
-Before You Start
-You are responsible for monthly costs of the services (VM, Supabase, etc.).
-
-Most services offer generous free tiers – you can start with zero or low cost.
-
-Important: Both xAI (Grok) and kie.ai are paid APIs – you must top up credits / set up billing in their dashboards for the system to generate images and respond with AI chat.
-
-You will suffer from success: As you gain more customers, you'll need to upgrade your Cloudinary, Upstash, and Supabase plans – but by then, your revenue will far exceed these costs.
-
-If you choose Option A, create a dedicated Gmail before we begin – with it, you get $300 free Google Cloud credits (3 months of free VM hosting).
-
-Getting Started (Quick Checklist)
-Choose your handover option (A or B).
-
-Prepare your accounts:
-
-Option A: create a dedicated Gmail.
-
-Option B: create accounts on Vercel, Supabase, Cloudinary, Upstash, Stripe, kie.ai, xAI, and a VM provider.
-
-Follow the setup guide – you'll find it in the handover/ folder.
-
-Update your Stripe bank details (live payouts) and domain DNS records.
-
-Start selling.
-
-Support
-Option A – everything is taken care of.
-
-Option B – the handover/ folder contains detailed guides.
-If you need extra help, I offer paid support at an hourly rate.
-
-Good luck with your new business!
