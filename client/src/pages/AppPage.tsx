@@ -439,13 +439,6 @@ export default function AppPage() {
     return () => clearTimeout(timer);
   }, [currentActiveId]);
 
-  // 🔥 FIX: Cleanup loading timer when navigating away or switching projects
-  useEffect(() => {
-    return () => {
-      stopLoadingTimer();
-    };
-  }, [projectState.activeProject?.project_id]);
-
   useEffect(() => {
     if (authState.isAuthenticated && authModalOpen) {
       setAuthModalOpen(false);
