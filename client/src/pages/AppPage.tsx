@@ -664,7 +664,6 @@ export default function AppPage() {
       if (isGen && !options?.skipMessages) {
         setSendingProjects(prev => ({ ...prev, [projectId]: true }));
         setStatus('running');
-        addSystemMessage("Creating concepts...");
       } else if (isGen && options?.skipMessages) {
         setSendingProjects(prev => ({ ...prev, [projectId]: true }));
         setStatus('running');
